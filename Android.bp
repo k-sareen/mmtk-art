@@ -12,44 +12,6 @@ rust_ffi_static {
     apex_available: [
         "//apex_available:platform",
         "//apex_available:anyapex",
-        // "com.android.art",
-        // "com.android.art.debug",
-        // "com.android.runtime",
     ],
-    // native_bridge_supported: true,
-    // product_available: true,
-    // recovery_available: true,
-    // vendor_available: true,
-    // vendor_ramdisk_available: true,
-    // ramdisk_available: true,
     min_sdk_version: "31",
 }
-
-// cc_library_headers {
-//     name: "libmmtk_art_headers",
-//     host_supported: true,
-//     visibility: ["//visibility:public"],
-//     export_include_dirs: ["art"],
-//     apex_available: [
-//         "//apex_available:anyapex",
-//     ],
-//     min_sdk_version: "31",
-// }
-//
-// cc_library_static {
-//     name: "libmmtk_art",
-//     host_supported: true,
-//     visibility: ["//visibility:public"],
-//     srcs: ["art/mmtk.cc"],
-//     // include_dirs: ["art"],
-//     apex_available: [
-//         "//apex_available:anyapex",
-//     ],
-//     native_bridge_supported: true,
-//     product_available: true,
-//     recovery_available: true,
-//     vendor_available: true,
-//     vendor_ramdisk_available: true,
-//     ramdisk_available: true,
-//     min_sdk_version: "31",
-// }
