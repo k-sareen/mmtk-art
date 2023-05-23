@@ -9,6 +9,10 @@ rust_ffi_static {
     crate_name: "mmtk_art",
     srcs: ["mmtk/src/lib.rs"],
     include_dirs: ["art"],
+    rustlibs: [
+        "liblazy_static",
+        "libmmtk"
+    ],
     apex_available: [
         "//apex_available:platform",
         "//apex_available:anyapex",
