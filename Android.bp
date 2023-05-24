@@ -2,6 +2,18 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
+cc_library_headers {
+    name: "libmmtk_art_headers",
+    host_supported: true,
+    visibility: ["//visibility:public"],
+    export_include_dirs: ["art"],
+    apex_available: [
+        "//apex_available:platform",
+        "//apex_available:anyapex",
+    ],
+    min_sdk_version: "31",
+}
+
 rust_ffi_static {
     name: "libmmtk_art",
     host_supported: true,
