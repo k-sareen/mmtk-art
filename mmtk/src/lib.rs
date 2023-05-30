@@ -20,6 +20,7 @@ use {
         util::{
             Address,
             ObjectReference,
+            conversions,
             copy::*,
             opaque_pointer::*,
         },
@@ -72,6 +73,7 @@ impl VMBinding for Art {
 
     const MIN_ALIGNMENT: usize = 8;
     const MAX_ALIGNMENT: usize = 8;
+    const ALLOC_END_ALIGNMENT: usize = 8;
     const USE_ALLOCATION_OFFSET: bool = false;
 }
 
@@ -252,7 +254,6 @@ impl Scanning<Art> for ArtScanning {
 /// Initialize MMTk instance
 #[no_mangle]
 pub extern "C" fn mmtk_init() {
-    eprintln!("Initializing MMTk");
     // Make sure that we haven't initialized MMTk (by accident) yet
     assert!(!crate::IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     // Make sure we initialize MMTk here
@@ -275,9 +276,11 @@ pub extern "C" fn mmtk_alloc(
     offset: isize,
     allocator: AllocationSemantics,
 ) -> Address {
+    // We need to do this as a workaround to a bug in mmtk-core: https://github.com/mmtk/mmtk-core/issues/730
+    let aligned_size = conversions::raw_align_up(size, align);
     mmtk::memory_manager::alloc::<Art>(
         unsafe { &mut *mutator },
-        size,
+        aligned_size,
         align,
         offset,
         allocator
