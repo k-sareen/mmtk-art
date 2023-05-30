@@ -286,3 +286,20 @@ pub extern "C" fn mmtk_alloc(
         allocator
     )
 }
+
+/// Set relevant object metadata in MMTk
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_post_alloc(
+    mutator: *mut Mutator<Art>,
+    object: ObjectReference,
+    size: usize,
+    allocator: AllocationSemantics,
+) {
+    mmtk::memory_manager::post_alloc::<Art>(
+        unsafe { &mut *mutator },
+        object,
+        size,
+        allocator
+    )
+}

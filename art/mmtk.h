@@ -47,6 +47,16 @@ MmtkMutator mmtk_bind_mutator(void *tls);
 void *mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
         ssize_t offset, int allocator);
 
+/**
+ * Set relevant object metadata
+ *
+ * @param mutator the mutator instance that is requesting the allocation
+ * @param object the returned address of the allocated object
+ * @param size the size of the allocated object
+ * @param allocator the allocation sematics to use for the allocation
+ */
+void mmtk_post_alloc(MmtkMutator mutator, void *object, size_t size, int allocator);
+
 // }
 #ifdef __cplusplus
 } // extern "C"
