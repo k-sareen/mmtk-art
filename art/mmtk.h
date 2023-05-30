@@ -57,6 +57,14 @@ void *mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
  */
 void mmtk_post_alloc(MmtkMutator mutator, void *object, size_t size, int allocator);
 
+/**
+ * Check if an object has been allocated by MMTk
+ *
+ * @param object address of the object
+ * @return if the given object has been allocated by MMTk
+ */
+bool mmtk_is_in_any_space(const void *object);
+
 // }
 #ifdef __cplusplus
 } // extern "C"

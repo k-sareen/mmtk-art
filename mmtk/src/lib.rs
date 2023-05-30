@@ -303,3 +303,11 @@ pub extern "C" fn mmtk_post_alloc(
         allocator
     )
 }
+
+/// Return if an object is allocated by MMTk
+#[no_mangle]
+pub extern "C" fn mmtk_is_in_any_space(object: ObjectReference) -> bool {
+    mmtk::memory_manager::is_in_mmtk_spaces::<Art>(
+        object,
+    )
+}
