@@ -79,7 +79,7 @@ impl VMBinding for Art {
 }
 
 impl ActivePlan<Art> for ArtActivePlan {
-	fn global() -> &'static dyn Plan<VM=Art> {
+    fn global() -> &'static dyn Plan<VM=Art> {
         SINGLETON.get_plan()
     }
 
@@ -105,7 +105,7 @@ impl ActivePlan<Art> for ArtActivePlan {
 }
 
 impl Collection<Art> for ArtCollection {
-	fn stop_all_mutators<F>(_tls: VMWorkerThread, _mutator_visitor: F)
+    fn stop_all_mutators<F>(_tls: VMWorkerThread, _mutator_visitor: F)
     where
         F: FnMut(&'static mut Mutator<Art>),
     {
@@ -117,7 +117,7 @@ impl Collection<Art> for ArtCollection {
     }
 
     fn block_for_gc(_tls: VMMutatorThread) {
-		unimplemented!()
+        unimplemented!()
     }
 
     fn spawn_gc_thread(_tls: VMThread, _ctx: GCThreadContext<Art>) {}
@@ -132,13 +132,13 @@ impl Collection<Art> for ArtCollection {
 }
 
 impl ObjectModel<Art> for ArtObjectModel {
-	const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
+    const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec = VMLocalForwardingPointerSpec::in_header(0);
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec = VMLocalForwardingBitsSpec::in_header(0);
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = VMLocalLOSMarkNurserySpec::side_first();
     const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = VMLocalMarkBitSpec::in_header(0);
 
-	const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
+    const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
 
     fn copy(
