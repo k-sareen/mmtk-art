@@ -23,7 +23,7 @@ rust_ffi_static {
     include_dirs: ["art"],
     rustlibs: [
         "liblazy_static",
-        "libmmtk"
+        "libmmtk",
     ],
     apex_available: [
         "//apex_available:platform",

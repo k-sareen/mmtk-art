@@ -1,4 +1,6 @@
 //! This crate interfaces with the MMTk framework to provide memory management capabilities.
+
+use std::ptr::null_mut;
 #[macro_use]
 extern crate lazy_static;
 
@@ -20,7 +22,6 @@ use {
         util::{
             Address,
             ObjectReference,
-            conversions,
             copy::*,
             opaque_pointer::*,
         },
@@ -131,11 +132,11 @@ impl Collection<Art> for ArtCollection {
 }
 
 impl ObjectModel<Art> for ArtObjectModel {
-	const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::in_header(0);
+	const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec = VMLocalForwardingPointerSpec::in_header(0);
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec = VMLocalForwardingBitsSpec::in_header(0);
+    const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = VMLocalLOSMarkNurserySpec::side_first();
     const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = VMLocalMarkBitSpec::in_header(0);
-    const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = VMLocalLOSMarkNurserySpec::in_header(0);
 
 	const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
@@ -152,8 +153,8 @@ impl ObjectModel<Art> for ArtObjectModel {
         unimplemented!()
     }
 
-    fn get_current_size(_object: ObjectReference) -> usize {
-        unimplemented!()
+    fn get_current_size(object: ObjectReference) -> usize {
+        unsafe { ((*UPCALLS).size_of)(object) }
     }
 
     fn get_size_when_copied(_object: ObjectReference) -> usize {
@@ -241,7 +242,7 @@ impl Scanning<Art> for ArtScanning {
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
         unimplemented!()
     }
-    
+
     fn supports_return_barrier() -> bool {
         unimplemented!()
     }
@@ -253,11 +254,31 @@ impl Scanning<Art> for ArtScanning {
 
 /// Initialize MMTk instance
 #[no_mangle]
-pub extern "C" fn mmtk_init() {
+pub extern "C" fn mmtk_init(upcalls: *const ArtUpcalls) {
+    unsafe { UPCALLS = upcalls };
     // Make sure that we haven't initialized MMTk (by accident) yet
     assert!(!crate::IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     // Make sure we initialize MMTk here
     lazy_static::initialize(&SINGLETON)
+}
+
+/// Initialize collection for MMTk
+#[no_mangle]
+pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
+    mmtk::memory_manager::initialize_collection(&SINGLETON, tls)
+}
+
+/// Set the min and max heap size
+#[no_mangle]
+pub extern "C" fn mmtk_set_heap_size(min: usize, max: usize) -> bool {
+    use mmtk::util::options::GCTriggerSelector;
+    let mut builder = BUILDER.lock().unwrap();
+    let policy = if min == max {
+        GCTriggerSelector::FixedHeapSize(min)
+    } else {
+        GCTriggerSelector::DynamicHeapSize(min, max)
+    };
+    builder.options.gc_trigger.set(policy)
 }
 
 /// Bind a mutator thread in MMTk
@@ -276,11 +297,9 @@ pub extern "C" fn mmtk_alloc(
     offset: isize,
     allocator: AllocationSemantics,
 ) -> Address {
-    // We need to do this as a workaround to a bug in mmtk-core: https://github.com/mmtk/mmtk-core/issues/730
-    let aligned_size = conversions::raw_align_up(size, align);
     mmtk::memory_manager::alloc::<Art>(
         unsafe { &mut *mutator },
-        aligned_size,
+        size,
         align,
         offset,
         allocator
@@ -306,8 +325,36 @@ pub extern "C" fn mmtk_post_alloc(
 
 /// Return if an object is allocated by MMTk
 #[no_mangle]
-pub extern "C" fn mmtk_is_in_any_space(object: ObjectReference) -> bool {
+pub extern "C" fn mmtk_is_object_in_heap_space(object: ObjectReference) -> bool {
     mmtk::memory_manager::is_in_mmtk_spaces::<Art>(
         object,
     )
 }
+
+/// Get starting heap address
+#[no_mangle]
+pub extern "C" fn mmtk_get_heap_start() -> Address {
+    mmtk::memory_manager::starting_heap_address()
+}
+
+/// Get ending heap address
+#[no_mangle]
+pub extern "C" fn mmtk_get_heap_end() -> Address {
+    mmtk::memory_manager::last_heap_address()
+}
+
+/// Check if given address is a valid object
+#[no_mangle]
+pub extern "C" fn mmtk_is_valid_object(addr: Address) -> bool {
+    mmtk::memory_manager::is_mmtk_object(addr)
+}
+
+#[repr(C)]
+/// Upcalls from MMTk to ART
+pub struct ArtUpcalls {
+    /// Get the size of the given object
+    pub size_of: extern "C" fn(object: ObjectReference) -> usize,
+}
+
+/// Global static instance of upcalls
+pub static mut UPCALLS: *const ArtUpcalls = null_mut();
