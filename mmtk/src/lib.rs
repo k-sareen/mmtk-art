@@ -13,7 +13,11 @@ use crate::{
 use mmtk::{
     MMTK,
     MMTKBuilder,
-    util::{Address, ObjectReference},
+    util::{
+        Address,
+        ObjectReference,
+        opaque_pointer::*,
+    },
     vm::VMBinding,
 };
 use std::{
@@ -82,6 +86,8 @@ impl VMBinding for Art {
 pub struct ArtUpcalls {
     /// Get the size of the given object
     pub size_of: extern "C" fn(object: ObjectReference) -> usize,
+    /// Block mutator thread for GC
+    pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
 }
 
 /// Global static instance of upcalls

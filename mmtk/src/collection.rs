@@ -1,4 +1,4 @@
-use crate::Art;
+use crate::{Art, UPCALLS};
 use mmtk::{
     Mutator,
     MutatorContext,
@@ -21,8 +21,8 @@ impl Collection<Art> for ArtCollection {
         unimplemented!()
     }
 
-    fn block_for_gc(_tls: VMMutatorThread) {
-        unimplemented!()
+    fn block_for_gc(tls: VMMutatorThread) {
+        unsafe { ((*UPCALLS).block_for_gc)(tls) }
     }
 
     fn spawn_gc_thread(_tls: VMThread, _ctx: GCThreadContext<Art>) {}

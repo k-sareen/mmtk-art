@@ -17,6 +17,7 @@ typedef void* VMThread;
 // Upcalls from MMTk to ART
 typedef struct {
   size_t (*size_of) (void *object);
+  void (*block_for_gc) (void *tls);
 } ArtUpcalls;
 
 /**
