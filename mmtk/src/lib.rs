@@ -5,7 +5,10 @@ extern crate lazy_static;
 
 use crate::{
     active_plan::ArtActivePlan,
-    collection::ArtCollection,
+    collection::{
+        ArtCollection,
+        GcThreadKind,
+    },
     object_model::ArtObjectModel,
     reference_glue::ArtReferenceGlue,
     scanning::ArtScanning,
@@ -88,6 +91,8 @@ pub struct ArtUpcalls {
     pub size_of: extern "C" fn(object: ObjectReference) -> usize,
     /// Block mutator thread for GC
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
+    /// Spawn GC thread with type `kind`
+    pub spawn_gc_thread: extern "C" fn(tls: VMThread, kind: GcThreadKind, ctx: *mut libc::c_void),
 }
 
 /// Global static instance of upcalls

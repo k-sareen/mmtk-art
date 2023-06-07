@@ -8,6 +8,10 @@ use crate::{
 use mmtk::{
     AllocationSemantics,
     Mutator,
+    scheduler::{
+        GCController,
+        GCWorker,
+    },
     util::{
         Address,
         ObjectReference,
@@ -45,6 +49,28 @@ pub extern "C" fn mmtk_set_heap_size(min: usize, max: usize) -> bool {
         GCTriggerSelector::FixedHeapSize(max)
     };
     builder.options.gc_trigger.set(policy)
+}
+
+/// Start the GC Controller thread. We trust the `gc_collector` pointer is valid
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_start_gc_controller_thread(
+    tls: VMWorkerThread,
+    gc_controller: *mut GCController<Art>,
+) {
+    let mut gc_controller = unsafe { Box::from_raw(gc_controller) };
+    mmtk::memory_manager::start_control_collector(&SINGLETON, tls, &mut gc_controller);
+}
+
+/// Start a GC Worker thread. We trust the `worker` pointer is valid.
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_start_gc_worker_thread(
+    tls: VMWorkerThread,
+    worker: *mut GCWorker<Art>
+) {
+    let mut worker = unsafe { Box::from_raw(worker) };
+    mmtk::memory_manager::start_worker::<Art>(&SINGLETON, tls, &mut worker)
 }
 
 /// Bind a mutator thread in MMTk

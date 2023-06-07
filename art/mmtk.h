@@ -13,11 +13,14 @@ typedef void* Address;
 typedef void* MmtkMutator;
 // An opaque pointer to a VMThread
 typedef void* VMThread;
+// Type of GC worker
+enum GcThreadKind { MmtkGcController, MmtkGcWorker };
 
 // Upcalls from MMTk to ART
 typedef struct {
-  size_t (*size_of) (void *object);
-  void (*block_for_gc) (void *tls);
+  size_t (*size_of) (void* object);
+  void (*block_for_gc) (void* tls);
+  void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
 } ArtUpcalls;
 
 /**
@@ -25,7 +28,7 @@ typedef struct {
  *
  * @param upcalls the set of ART upcalls used by MMTk
  */
-void mmtk_init(ArtUpcalls *upcalls);
+void mmtk_init(ArtUpcalls* upcalls);
 
 /**
  * Initialize collection for MMTk
@@ -65,6 +68,22 @@ Address mmtk_get_heap_end();
 bool mmtk_is_valid_object(Address addr);
 
 /**
+ * Start the GC Controller thread
+ * 
+ * @param tls
+ * @param context
+ */
+void mmtk_start_gc_controller_thread(void* tls, void* context);
+
+/**
+ * Start a GC Worker thread
+ * 
+ * @param tls
+ * @param context
+ */
+void mmtk_start_gc_worker_thread(void* tls, void* context);
+
+/**
  * Allocation
  *
  * Functions that interact with the mutator and are responsible for allocation
@@ -76,7 +95,7 @@ bool mmtk_is_valid_object(Address addr);
  * @param tls pointer to mutator thread
  * @return an instance of an MMTk mutator
  */
-MmtkMutator mmtk_bind_mutator(void *tls);
+MmtkMutator mmtk_bind_mutator(void* tls);
 
 /**
  * Allocate an object
@@ -99,7 +118,7 @@ void *mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
  * @param size the size of the allocated object
  * @param allocator the allocation sematics to use for the allocation
  */
-void mmtk_post_alloc(MmtkMutator mutator, void *object, size_t size, int allocator);
+void mmtk_post_alloc(MmtkMutator mutator, void* object, size_t size, int allocator);
 
 /**
  * Check if an object has been allocated by MMTk
@@ -107,7 +126,7 @@ void mmtk_post_alloc(MmtkMutator mutator, void *object, size_t size, int allocat
  * @param object address of the object
  * @return if the given object has been allocated by MMTk
  */
-bool mmtk_is_object_in_heap_space(const void *object);
+bool mmtk_is_object_in_heap_space(const void* object);
 
 // }
 } // extern "C"
