@@ -51,7 +51,7 @@ pub extern "C" fn mmtk_set_heap_size(min: usize, max: usize) -> bool {
     builder.options.gc_trigger.set(policy)
 }
 
-/// Start the GC Controller thread. We trust the `gc_collector` pointer is valid
+/// Start the GC Controller thread. We trust the `gc_controller` pointer is valid
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn mmtk_start_gc_controller_thread(
@@ -62,7 +62,7 @@ pub extern "C" fn mmtk_start_gc_controller_thread(
     mmtk::memory_manager::start_control_collector(&SINGLETON, tls, &mut gc_controller);
 }
 
-/// Start a GC Worker thread. We trust the `worker` pointer is valid.
+/// Start a GC Worker thread. We trust the `worker` pointer is valid
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn mmtk_start_gc_worker_thread(

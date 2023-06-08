@@ -70,16 +70,16 @@ bool mmtk_is_valid_object(Address addr);
 /**
  * Start the GC Controller thread
  * 
- * @param tls
- * @param context
+ * @param tls the thread that will be used as the GC Controller
+ * @param context the context for the GC Controller
  */
 void mmtk_start_gc_controller_thread(void* tls, void* context);
 
 /**
  * Start a GC Worker thread
  * 
- * @param tls
- * @param context
+ * @param tls the thread that will be used as the GC Worker
+ * @param context the context for the GC Worker
  */
 void mmtk_start_gc_worker_thread(void* tls, void* context);
 

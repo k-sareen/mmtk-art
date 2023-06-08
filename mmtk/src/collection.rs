@@ -55,6 +55,6 @@ impl Collection<Art> for ArtCollection {
         _tls_m: VMMutatorThread,
         _mutator: &T,
     ) {
-        unimplemented!()
+        // We have to do nothing to prepare mutators in ART
     }
 }
