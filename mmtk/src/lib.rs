@@ -93,6 +93,10 @@ pub struct ArtUpcalls {
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
     /// Spawn GC thread with type `kind`
     pub spawn_gc_thread: extern "C" fn(tls: VMThread, kind: GcThreadKind, ctx: *mut libc::c_void),
+    /// Stop all mutator threads
+    pub stop_all_mutators: extern "C" fn(),
+    /// Resume all mutator threads
+    pub resume_mutators: extern "C" fn(),
 }
 
 /// Global static instance of upcalls

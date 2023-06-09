@@ -23,11 +23,11 @@ impl Collection<Art> for ArtCollection {
     where
         F: FnMut(&'static mut Mutator<Art>),
     {
-        unimplemented!()
+        unsafe { ((*UPCALLS).stop_all_mutators)() }
     }
 
     fn resume_mutators(_tls: VMWorkerThread) {
-        unimplemented!()
+        unsafe { ((*UPCALLS).resume_mutators)() }
     }
 
     fn block_for_gc(tls: VMMutatorThread) {

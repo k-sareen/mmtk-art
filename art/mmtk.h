@@ -21,6 +21,8 @@ typedef struct {
   size_t (*size_of) (void* object);
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
+  void (*stop_all_mutators) ();
+  void (*resume_mutators) ();
 } ArtUpcalls;
 
 /**
