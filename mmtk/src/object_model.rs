@@ -41,7 +41,7 @@ impl ObjectModel<Art> for ArtObjectModel {
         0
     }
 
-    fn get_align_offset_when_copied(_object: ObjectReference) -> isize {
+    fn get_align_offset_when_copied(_object: ObjectReference) -> usize {
         0
     }
 

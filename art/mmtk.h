@@ -110,7 +110,7 @@ MmtkMutator mmtk_bind_mutator(void* tls);
  * @return the address of the newly allocated object
  */
 void *mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
-        ssize_t offset, int allocator);
+        size_t offset, int allocator);
 
 /**
  * Set relevant object metadata

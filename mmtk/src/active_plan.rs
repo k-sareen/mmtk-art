@@ -26,11 +26,7 @@ impl ActivePlan<Art> for ArtActivePlan {
         unimplemented!()
     }
 
-    fn reset_mutator_iterator() {
-        unimplemented!()
-    }
-
-    fn get_next_mutator() -> Option<&'static mut Mutator<Art>> {
+    fn mutators<'a>() -> Box<dyn Iterator<Item = &'a mut Mutator<Art>> + 'a> {
         unimplemented!()
     }
 }

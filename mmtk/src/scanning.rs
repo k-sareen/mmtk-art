@@ -9,11 +9,14 @@ use mmtk::{
 pub struct ArtScanning;
 
 impl Scanning<Art> for ArtScanning {
-    fn scan_thread_roots(_tls: VMWorkerThread, _factory: impl RootsWorkFactory<ArtEdge>) {
+    fn scan_roots_in_all_mutator_threads(
+        _tls: VMWorkerThread,
+        _factory: impl RootsWorkFactory<ArtEdge>
+    ) {
         unimplemented!()
     }
 
-    fn scan_thread_root(
+    fn scan_roots_in_mutator_thread(
         _tls: VMWorkerThread,
         _mutator: &'static mut Mutator<Art>,
         _factory: impl RootsWorkFactory<ArtEdge>,

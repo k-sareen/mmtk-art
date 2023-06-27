@@ -86,7 +86,7 @@ pub extern "C" fn mmtk_alloc(
     mutator: *mut Mutator<Art>,
     size: usize,
     align: usize,
-    offset: isize,
+    offset: usize,
     allocator: AllocationSemantics,
 ) -> Address {
     mmtk::memory_manager::alloc::<Art>(
