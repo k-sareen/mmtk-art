@@ -16,6 +16,16 @@ typedef void* VMThread;
 // Type of GC worker
 enum GcThreadKind { MmtkGcController, MmtkGcWorker };
 
+// A closure that operates on MmtkMutators
+struct MutatorClosure {
+    void (*func)(MmtkMutator mutator, void* data);
+    void* data;
+
+    void invoke(MmtkMutator mutator) {
+        func(mutator, data);
+    }
+};
+
 // Upcalls from MMTk to ART
 typedef struct {
   size_t (*size_of) (void* object);
@@ -23,6 +33,10 @@ typedef struct {
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
   void (*stop_all_mutators) ();
   void (*resume_mutators) ();
+  size_t (*number_of_mutators) ();
+  bool (*is_mutator) (void* tls);
+  MmtkMutator (*get_mmtk_mutator) (void* tls);
+  void (*for_all_mutators) (MutatorClosure closure);
 } ArtUpcalls;
 
 /**

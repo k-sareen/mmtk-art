@@ -16,6 +16,7 @@ use crate::{
 use mmtk::{
     MMTK,
     MMTKBuilder,
+    Mutator,
     util::{
         Address,
         ObjectReference,
@@ -97,7 +98,47 @@ pub struct ArtUpcalls {
     pub stop_all_mutators: extern "C" fn(),
     /// Resume all mutator threads
     pub resume_mutators: extern "C" fn(),
+    /// Return the number of mutators
+    pub number_of_mutators: extern "C" fn() -> usize,
+    /// Return if given thread `tls` is a mutator thread
+    pub is_mutator: extern "C" fn(tls: VMThread) -> bool,
+    /// Return the `Mutator` instance associated with thread `tls`
+    pub get_mmtk_mutator: extern "C" fn(tls: VMMutatorThread) -> *mut Mutator<Art>,
+    /// Evaluate given closure for each mutator thread
+    pub for_all_mutators: extern "C" fn(closure: MutatorClosure),
 }
 
 /// Global static instance of upcalls
 pub static mut UPCALLS: *const ArtUpcalls = null_mut();
+
+/// A closure iterating on mutators. The C++ code should pass `data` back as the
+/// last argument.
+#[repr(C)]
+pub struct MutatorClosure {
+    /// The closure to invoke
+    pub func: extern "C" fn(mutator: *mut Mutator<Art>, data: *mut libc::c_void),
+    /// The Rust context associated with the closure
+    pub data: *mut libc::c_void,
+}
+
+impl MutatorClosure {
+    fn from_rust_closure<F>(callback: &mut F) -> Self
+    where
+        F: FnMut(&'static mut Mutator<Art>),
+    {
+        Self {
+            func: Self::call_rust_closure::<F>,
+            data: callback as *mut F as *mut libc::c_void,
+        }
+    }
+
+    extern "C" fn call_rust_closure<F>(
+        mutator: *mut Mutator<Art>,
+        callback_ptr: *mut libc::c_void,
+    ) where
+        F: FnMut(&'static mut Mutator<Art>),
+    {
+        let callback: &mut F = unsafe { &mut *(callback_ptr as *mut F) };
+        callback(unsafe { &mut *mutator });
+    }
+}

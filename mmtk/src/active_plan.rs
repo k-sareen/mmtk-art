@@ -1,9 +1,18 @@
-use crate::{Art, SINGLETON};
+use crate::{
+    Art,
+    MutatorClosure,
+    SINGLETON,
+    UPCALLS,
+};
 use mmtk::{
     Mutator,
     Plan,
     util::opaque_pointer::*,
     vm::ActivePlan,
+};
+use std::{
+    collections::VecDeque,
+    marker::PhantomData,
 };
 
 /// Implements active GC plan trait
@@ -15,18 +24,50 @@ impl ActivePlan<Art> for ArtActivePlan {
     }
 
     fn number_of_mutators() -> usize {
-        unimplemented!()
+        unsafe { ((*UPCALLS).number_of_mutators)() }
     }
 
-    fn is_mutator(_tls: VMThread) -> bool {
-        true
+    fn is_mutator(tls: VMThread) -> bool {
+        unsafe { ((*UPCALLS).is_mutator)(tls) }
     }
 
-    fn mutator(_tls: VMMutatorThread) -> &'static mut Mutator<Art> {
-        unimplemented!()
+    fn mutator(tls: VMMutatorThread) -> &'static mut Mutator<Art> {
+        unsafe {
+            let m = ((*UPCALLS).get_mmtk_mutator)(tls);
+            &mut *m
+        }
     }
 
     fn mutators<'a>() -> Box<dyn Iterator<Item = &'a mut Mutator<Art>> + 'a> {
-        unimplemented!()
+        Box::new(ArtMutatorIterator::new())
+    }
+}
+
+/// An iterator that iterates through all active mutator threads
+struct ArtMutatorIterator<'a> {
+    mutators: VecDeque<&'a mut Mutator<Art>>,
+    phantom_data: PhantomData<&'a ()>,
+}
+
+impl<'a> ArtMutatorIterator<'a> {
+    fn new() -> Self {
+        let mut mutators = VecDeque::new();
+        unsafe {
+            ((*UPCALLS).for_all_mutators)(MutatorClosure::from_rust_closure(&mut |mutator| {
+                mutators.push_back(mutator);
+            }));
+        }
+        Self {
+            mutators,
+            phantom_data: PhantomData,
+        }
+    }
+}
+
+impl<'a> Iterator for ArtMutatorIterator<'a> {
+    type Item = &'a mut Mutator<Art>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.mutators.pop_front()
     }
 }
