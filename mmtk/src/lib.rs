@@ -106,6 +106,8 @@ pub struct ArtUpcalls {
     pub get_mmtk_mutator: extern "C" fn(tls: VMMutatorThread) -> *mut Mutator<Art>,
     /// Evaluate given closure for each mutator thread
     pub for_all_mutators: extern "C" fn(closure: MutatorClosure),
+    /// Scan all VM roots and report edges to MMTk
+    pub scan_all_roots: extern "C" fn(closure: EdgesClosure),
 }
 
 /// Global static instance of upcalls
@@ -141,4 +143,27 @@ impl MutatorClosure {
         let callback: &mut F = unsafe { &mut *(callback_ptr as *mut F) };
         callback(unsafe { &mut *mutator });
     }
+}
+
+/// A representation of a Rust buffer
+#[repr(C)]
+pub struct RustBuffer {
+    /// The start address of the buffer
+    pub ptr: *mut Address,
+    /// The capacity of the buffer
+    pub capacity: usize,
+}
+
+/// A closure for reporting root edges. The C++ code should pass `data` back as the last argument.
+#[repr(C)]
+pub struct EdgesClosure {
+    /// The closure to invoke
+    pub func: extern "C" fn(
+        buf: *mut Address,
+        size: usize,
+        cap: usize,
+        data: *mut libc::c_void,
+    ) -> RustBuffer,
+    /// The Rust context associated with the closure
+    pub data: *const libc::c_void,
 }

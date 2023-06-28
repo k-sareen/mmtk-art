@@ -18,11 +18,17 @@ impl ObjectModel<Art> for ArtObjectModel {
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
 
     fn copy(
-        _from: ObjectReference,
-        _semantics: CopySemantics,
-        _copy_context: &mut GCWorkerCopyContext<Art>,
+        from: ObjectReference,
+        semantics: CopySemantics,
+        copy_context: &mut GCWorkerCopyContext<Art>,
     ) -> ObjectReference {
-        unimplemented!()
+        let bytes = Self::get_current_size(from);
+        let dst = copy_context.alloc_copy(from, bytes, ::std::mem::size_of::<usize>(), 0, semantics);
+        let src = from.to_raw_address();
+        unsafe { std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), bytes) }
+        let to_obj = ObjectReference::from_raw_address(dst);
+        copy_context.post_copy(to_obj, bytes, semantics);
+        to_obj
     }
 
     fn copy_to(_from: ObjectReference, _to: ObjectReference, _region: Address) -> Address {
@@ -33,12 +39,13 @@ impl ObjectModel<Art> for ArtObjectModel {
         unsafe { ((*UPCALLS).size_of)(object) }
     }
 
-    fn get_size_when_copied(_object: ObjectReference) -> usize {
-        0
+    fn get_size_when_copied(object: ObjectReference) -> usize {
+        Self::get_current_size(object)
     }
 
     fn get_align_when_copied(_object: ObjectReference) -> usize {
-        0
+        // XXX(kunals): Use a proper alignment constant
+        1 << 3
     }
 
     fn get_align_offset_when_copied(_object: ObjectReference) -> usize {

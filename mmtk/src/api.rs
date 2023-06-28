@@ -73,6 +73,20 @@ pub extern "C" fn mmtk_start_gc_worker_thread(
     mmtk::memory_manager::start_worker::<Art>(&SINGLETON, tls, &mut worker)
 }
 
+/// Release a RustBuffer by dropping it
+///
+/// # Safety
+/// Caller needs to make sure the `ptr` is a valid vector pointer.
+#[no_mangle]
+pub unsafe extern "C" fn mmtk_release_rust_buffer(
+    ptr: *mut Address,
+    length: usize,
+    capacity: usize,
+) {
+    let vec = Vec::<Address>::from_raw_parts(ptr, length, capacity);
+    drop(vec);
+}
+
 /// Bind a mutator thread in MMTk
 #[no_mangle]
 pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut Mutator<Art> {

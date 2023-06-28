@@ -16,14 +16,30 @@ typedef void* VMThread;
 // Type of GC worker
 enum GcThreadKind { MmtkGcController, MmtkGcWorker };
 
+// A representation of a Rust buffer
+typedef struct {
+  Address* buf;
+  size_t capacity;
+} RustBuffer;
+
 // A closure that operates on MmtkMutators
 struct MutatorClosure {
-    void (*func)(MmtkMutator mutator, void* data);
-    void* data;
+  void (*func)(MmtkMutator mutator, void* data);
+  void* data;
 
-    void invoke(MmtkMutator mutator) {
-        func(mutator, data);
-    }
+  void invoke(MmtkMutator mutator) {
+    func(mutator, data);
+  }
+};
+
+// A closure that operates on Edges. Used for reporting Edges back to MMTk
+struct EdgesClosure {
+  RustBuffer (*func)(Address* buf, size_t size, size_t capacity, void* data);
+  void* data;
+
+  RustBuffer invoke(Address* buf, size_t size, size_t capacity) {
+    return func(buf, size, capacity, data);
+  }
 };
 
 // Upcalls from MMTk to ART
@@ -37,6 +53,7 @@ typedef struct {
   bool (*is_mutator) (void* tls);
   MmtkMutator (*get_mmtk_mutator) (void* tls);
   void (*for_all_mutators) (MutatorClosure closure);
+  void (*scan_all_roots) (EdgesClosure closure);
 } ArtUpcalls;
 
 /**
@@ -85,7 +102,7 @@ bool mmtk_is_valid_object(Address addr);
 
 /**
  * Start the GC Controller thread
- * 
+ *
  * @param tls the thread that will be used as the GC Controller
  * @param context the context for the GC Controller
  */
@@ -93,11 +110,21 @@ void mmtk_start_gc_controller_thread(void* tls, void* context);
 
 /**
  * Start a GC Worker thread
- * 
+ *
  * @param tls the thread that will be used as the GC Worker
  * @param context the context for the GC Worker
  */
 void mmtk_start_gc_worker_thread(void* tls, void* context);
+
+/**
+ * Release a RustBuffer by dropping it. It is the caller's responsibility to
+ * ensure that @param buffer points to a valid RustBuffer.
+ *
+ * @param buffer the address of the buffer
+ * @param length the number of items in the buffer
+ * @param capacity the maximum capacity of the buffer
+ */
+void mmtk_release_rust_buffer(void** buffer, size_t length, size_t capacity);
 
 /**
  * Allocation
