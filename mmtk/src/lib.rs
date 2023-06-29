@@ -22,10 +22,15 @@ use mmtk::{
         ObjectReference,
         opaque_pointer::*,
     },
-    vm::VMBinding,
+    vm::{
+        edge_shape::{
+            Edge,
+            UnimplementedMemorySlice,
+        },
+        VMBinding,
+    },
 };
 use std::{
-    ops::Range,
     ptr::null_mut,
     sync::{
         Mutex,
@@ -66,8 +71,40 @@ lazy_static! {
     };
 }
 
-/// The type of edge in ART
-type ArtEdge = Address;
+fn compress(o: ObjectReference) -> u32 {
+    if o.is_null() {
+        0u32
+    } else {
+        o.to_raw_address().as_usize() as u32
+    }
+}
+
+fn decompress(v: u32) -> ObjectReference {
+    if v == 0 {
+        ObjectReference::NULL
+    } else {
+        unsafe {
+            ObjectReference::from_raw_address(
+                Address::from_usize(v as usize)
+            )
+        }
+    }
+}
+
+/// The type of edge in ART. ART edges only operate on 32-bits
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct ArtEdge(pub Address);
+
+impl Edge for ArtEdge {
+    fn load(&self) -> ObjectReference {
+        decompress(unsafe { self.0.load::<u32>() })
+    }
+
+    fn store(&self, object: ObjectReference) {
+        unsafe { self.0.store::<u32>(compress(object)) }
+    }
+}
 
 impl VMBinding for Art {
     type VMActivePlan = ArtActivePlan;
@@ -77,7 +114,7 @@ impl VMBinding for Art {
     type VMScanning = ArtScanning;
 
     type VMEdge = ArtEdge;
-    type VMMemorySlice = Range<Address>;
+    type VMMemorySlice = UnimplementedMemorySlice<ArtEdge>;
 
     const MIN_ALIGNMENT: usize = 8;
     const MAX_ALIGNMENT: usize = 8;

@@ -78,7 +78,7 @@ extern "C" fn report_edges_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
     factory_ptr: *mut libc::c_void,
 ) -> RustBuffer {
     if !ptr.is_null() {
-        let buf = unsafe { Vec::<Address>::from_raw_parts(ptr, length, capacity) };
+        let buf = unsafe { Vec::<ArtEdge>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
         factory.create_process_edge_roots_work(buf);
     }
