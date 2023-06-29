@@ -22,7 +22,7 @@ impl ObjectModel<Art> for ArtObjectModel {
         semantics: CopySemantics,
         copy_context: &mut GCWorkerCopyContext<Art>,
     ) -> ObjectReference {
-        let bytes = Self::get_current_size(from);
+        let bytes = Self::get_size_when_copied(from);
         let dst = copy_context.alloc_copy(from, bytes, ::std::mem::size_of::<usize>(), 0, semantics);
         let src = from.to_raw_address();
         unsafe { std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), bytes) }
@@ -36,7 +36,8 @@ impl ObjectModel<Art> for ArtObjectModel {
     }
 
     fn get_current_size(object: ObjectReference) -> usize {
-        unsafe { ((*UPCALLS).size_of)(object) }
+        use mmtk::util::conversions;
+        conversions::raw_align_up(unsafe { ((*UPCALLS).size_of)(object) }, Art::MIN_ALIGNMENT)
     }
 
     fn get_size_when_copied(object: ObjectReference) -> usize {
@@ -44,8 +45,7 @@ impl ObjectModel<Art> for ArtObjectModel {
     }
 
     fn get_align_when_copied(_object: ObjectReference) -> usize {
-        // XXX(kunals): Use a proper alignment constant
-        1 << 3
+        Art::MIN_ALIGNMENT
     }
 
     fn get_align_offset_when_copied(_object: ObjectReference) -> usize {
