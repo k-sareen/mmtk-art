@@ -1,12 +1,10 @@
 use crate::{
     Art,
     MutatorClosure,
-    SINGLETON,
     UPCALLS,
 };
 use mmtk::{
     Mutator,
-    Plan,
     util::opaque_pointer::*,
     vm::ActivePlan,
 };
@@ -19,10 +17,6 @@ use std::{
 pub struct ArtActivePlan;
 
 impl ActivePlan<Art> for ArtActivePlan {
-    fn global() -> &'static dyn Plan<VM=Art> {
-        SINGLETON.get_plan()
-    }
-
     fn number_of_mutators() -> usize {
         unsafe { ((*UPCALLS).number_of_mutators)() }
     }

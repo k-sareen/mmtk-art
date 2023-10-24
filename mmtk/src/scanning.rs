@@ -19,19 +19,6 @@ use mmtk::{
 pub struct ArtScanning;
 
 impl Scanning<Art> for ArtScanning {
-    // ART doesn't differentiate between different roots (or well it does, but
-    // since it uses a visitor pattern, it's a bit annoying to differentiate
-    // between different kinds of roots for MMTk). Hence, we scan and report all
-    // roots in the `scan_vm_specific_roots` function. Since ART uses the same
-    // visitor for all roots, it is safe to do so as we retain the semantics
-    // that all roots are treated the same.
-    const SCAN_MUTATORS_IN_SAFEPOINT: bool = false;
-
-    fn scan_roots_in_all_mutator_threads(
-        _tls: VMWorkerThread,
-        _factory: impl RootsWorkFactory<ArtEdge>
-    ) {}
-
     fn scan_roots_in_mutator_thread(
         _tls: VMWorkerThread,
         _mutator: &'static mut Mutator<Art>,
@@ -80,7 +67,7 @@ extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
     if !ptr.is_null() {
         let buf = unsafe { Vec::<ObjectReference>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
-        factory.create_process_node_roots_work(buf);
+        factory.create_process_pinning_roots_work(buf);
     }
     let (ptr, _, capacity) = {
         // TODO: Use Vec::into_raw_parts() when the method is available.

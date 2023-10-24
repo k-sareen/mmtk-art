@@ -20,6 +20,11 @@ use mmtk::{
     util::{
         Address,
         ObjectReference,
+        conversions::{
+            chunk_align_down,
+            chunk_align_up,
+        },
+        heap::vm_layout::VMLayout,
         opaque_pointer::*,
     },
     vm::{
@@ -63,8 +68,9 @@ lazy_static! {
     pub static ref BUILDER: Mutex<MMTKBuilder> = Mutex::new(MMTKBuilder::new());
     /// The actual MMTk instance
     pub static ref SINGLETON: MMTK<Art> = {
-        let builder = BUILDER.lock().unwrap();
+        let mut builder = BUILDER.lock().unwrap();
         assert!(!IS_MMTK_INITIALIZED.load(Ordering::Relaxed));
+        set_vm_layout(&mut builder);
         let ret = mmtk::memory_manager::mmtk_init(&builder);
         IS_MMTK_INITIALIZED.store(true, Ordering::SeqCst);
         *ret
@@ -89,6 +95,25 @@ fn decompress(v: u32) -> ObjectReference {
             )
         }
     }
+}
+
+fn set_vm_layout(builder: &mut MMTKBuilder) {
+    let max_heap_size = builder.options.gc_trigger.max_heap_size();
+    assert!(
+        max_heap_size <= (4usize << 30),
+        "Heap size is larger than 4 GB"
+    );
+    let start = 0x1000_0000;
+    let end = start + max_heap_size;
+    let constants = VMLayout {
+        log_address_space: 32,
+        heap_start: chunk_align_down(unsafe { Address::from_usize(start) }),
+        heap_end: chunk_align_up(unsafe { Address::from_usize(end) }),
+        log_space_extent: 31,
+        force_use_contiguous_spaces: false,
+    };
+
+    builder.set_vm_layout(constants);
 }
 
 /// The type of edge in ART. ART edges only operate on 32-bits

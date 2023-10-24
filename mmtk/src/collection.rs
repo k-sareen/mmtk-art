@@ -1,7 +1,6 @@
 use crate::{Art, UPCALLS};
 use mmtk::{
     Mutator,
-    MutatorContext,
     util::opaque_pointer::*,
     vm::{Collection, GCThreadContext},
 };
@@ -48,13 +47,5 @@ impl Collection<Art> for ArtCollection {
         unsafe {
             ((*UPCALLS).spawn_gc_thread)(tls, kind, ctx_ptr);
         }
-    }
-
-    fn prepare_mutator<T: MutatorContext<Art>>(
-        _tls_w: VMWorkerThread,
-        _tls_m: VMMutatorThread,
-        _mutator: &T,
-    ) {
-        // We have to do nothing to prepare mutators in ART
     }
 }
