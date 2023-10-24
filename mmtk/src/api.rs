@@ -103,13 +103,23 @@ pub extern "C" fn mmtk_alloc(
     offset: usize,
     allocator: AllocationSemantics,
 ) -> Address {
-    mmtk::memory_manager::alloc::<Art>(
-        unsafe { &mut *mutator },
-        size,
-        align,
-        offset,
-        allocator
-    )
+    if size > 16384 {
+        mmtk::memory_manager::alloc::<Art>(
+            unsafe { &mut *mutator },
+            size,
+            align,
+            offset,
+            AllocationSemantics::Los,
+        )
+    } else {
+        mmtk::memory_manager::alloc::<Art>(
+            unsafe { &mut *mutator },
+            size,
+            align,
+            offset,
+            allocator
+        )
+    }
 }
 
 /// Set relevant object metadata in MMTk

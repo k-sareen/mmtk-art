@@ -127,6 +127,8 @@ impl VMBinding for Art {
 pub struct ArtUpcalls {
     /// Get the size of the given object
     pub size_of: extern "C" fn(object: ObjectReference) -> usize,
+    /// Scan object for references
+    pub scan_object: extern "C" fn(object: ObjectReference),
     /// Block mutator thread for GC
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
     /// Spawn GC thread with type `kind`
@@ -143,8 +145,8 @@ pub struct ArtUpcalls {
     pub get_mmtk_mutator: extern "C" fn(tls: VMMutatorThread) -> *mut Mutator<Art>,
     /// Evaluate given closure for each mutator thread
     pub for_all_mutators: extern "C" fn(closure: MutatorClosure),
-    /// Scan all VM roots and report edges to MMTk
-    pub scan_all_roots: extern "C" fn(closure: EdgesClosure),
+    /// Scan all VM roots and report nodes to MMTk
+    pub scan_all_roots: extern "C" fn(closure: NodesClosure),
 }
 
 /// Global static instance of upcalls
@@ -191,9 +193,9 @@ pub struct RustBuffer {
     pub capacity: usize,
 }
 
-/// A closure for reporting root edges. The C++ code should pass `data` back as the last argument.
+/// A closure for reporting root nodes. The C++ code should pass `data` back as the last argument.
 #[repr(C)]
-pub struct EdgesClosure {
+pub struct NodesClosure {
     /// The closure to invoke
     pub func: extern "C" fn(
         buf: *mut Address,

@@ -33,7 +33,7 @@ struct MutatorClosure {
 };
 
 // A closure that operates on Edges. Used for reporting Edges back to MMTk
-struct EdgesClosure {
+struct NodesClosure {
   RustBuffer (*func)(Address* buf, size_t size, size_t capacity, void* data);
   void* data;
 
@@ -45,6 +45,7 @@ struct EdgesClosure {
 // Upcalls from MMTk to ART
 typedef struct {
   size_t (*size_of) (void* object);
+  void (*scan_object) (void* object);
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
   void (*stop_all_mutators) ();
@@ -53,7 +54,7 @@ typedef struct {
   bool (*is_mutator) (void* tls);
   MmtkMutator (*get_mmtk_mutator) (void* tls);
   void (*for_all_mutators) (MutatorClosure closure);
-  void (*scan_all_roots) (EdgesClosure closure);
+  void (*scan_all_roots) (NodesClosure closure);
 } ArtUpcalls;
 
 /**

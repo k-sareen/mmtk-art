@@ -1,7 +1,7 @@
 use crate::{
     Art,
     ArtEdge,
-    EdgesClosure,
+    NodesClosure,
     RustBuffer,
     UPCALLS,
 };
@@ -40,7 +40,7 @@ impl Scanning<Art> for ArtScanning {
 
     fn scan_vm_specific_roots(_tls: VMWorkerThread, mut factory: impl RootsWorkFactory<ArtEdge>) {
         unsafe {
-            ((*UPCALLS).scan_all_roots)(to_edges_closure(&mut factory));
+            ((*UPCALLS).scan_all_roots)(to_nodes_closure(&mut factory));
         }
     }
 
@@ -69,18 +69,18 @@ impl Scanning<Art> for ArtScanning {
 const WORK_PACKET_CAPACITY: usize = 4096;
 
 /// Create a buffer of size `length` and capacity `capacity`. This buffer is
-/// used for reporting edges to MMTk. The C++ code should store slots in the
+/// used for reporting nodes to MMTk. The C++ code should store nodes in the
 /// buffer carefully to avoid segfaulting.
-extern "C" fn report_edges_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
+extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
     ptr: *mut Address,
     length: usize,
     capacity: usize,
     factory_ptr: *mut libc::c_void,
 ) -> RustBuffer {
     if !ptr.is_null() {
-        let buf = unsafe { Vec::<ArtEdge>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
+        let buf = unsafe { Vec::<ObjectReference>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
-        factory.create_process_edge_roots_work(buf);
+        factory.create_process_node_roots_work(buf);
     }
     let (ptr, _, capacity) = {
         // TODO: Use Vec::into_raw_parts() when the method is available.
@@ -92,10 +92,10 @@ extern "C" fn report_edges_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
     RustBuffer { ptr, capacity }
 }
 
-/// Convert a RootsWorkFactory into an EdgesClosure
-pub(crate) fn to_edges_closure<F: RootsWorkFactory<ArtEdge>>(factory: &mut F) -> EdgesClosure {
-    EdgesClosure {
-        func: report_edges_and_renew_buffer::<F>,
+/// Convert a RootsWorkFactory into an NodesClosure
+pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtEdge>>(factory: &mut F) -> NodesClosure {
+    NodesClosure {
+        func: report_nodes_and_renew_buffer::<F>,
         data: factory as *mut F as *mut libc::c_void,
     }
 }
