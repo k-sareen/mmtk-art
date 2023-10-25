@@ -15,6 +15,14 @@ typedef void* MmtkMutator;
 typedef void* VMThread;
 // Type of GC worker
 enum GcThreadKind { MmtkGcController, MmtkGcWorker };
+// Allocation semantics
+enum AllocationSemantics {
+  AllocatorDefault  = 0,
+  AllocatorImmortal = 1,
+  AllocatorLos      = 2,
+  AllocatorCode     = 3,
+  AllocatorReadOnly = 4,
+};
 
 // A representation of a Rust buffer
 typedef struct {
@@ -32,7 +40,7 @@ struct MutatorClosure {
   }
 };
 
-// A closure that operates on Edges. Used for reporting Edges back to MMTk
+// A closure that operates on Nodes. Used for reporting Nodes back to MMTk
 struct NodesClosure {
   RustBuffer (*func)(Address* buf, size_t size, size_t capacity, void* data);
   void* data;
@@ -45,7 +53,7 @@ struct NodesClosure {
 // Upcalls from MMTk to ART
 typedef struct {
   size_t (*size_of) (void* object);
-  void (*scan_object) (void* object);
+  void (*scan_object) (void* object, void (*closure)(void* edge));
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
   void (*stop_all_mutators) ();
@@ -152,7 +160,7 @@ MmtkMutator mmtk_bind_mutator(void* tls);
  * @return the address of the newly allocated object
  */
 void *mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
-        size_t offset, int allocator);
+        size_t offset, AllocationSemantics semantics);
 
 /**
  * Set relevant object metadata
@@ -162,7 +170,8 @@ void *mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
  * @param size the size of the allocated object
  * @param allocator the allocation sematics to use for the allocation
  */
-void mmtk_post_alloc(MmtkMutator mutator, void* object, size_t size, int allocator);
+void mmtk_post_alloc(MmtkMutator mutator, void* object,
+        size_t size, AllocationSemantics semantics);
 
 /**
  * Check if an object has been allocated by MMTk

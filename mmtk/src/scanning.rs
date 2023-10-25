@@ -14,9 +14,15 @@ use mmtk::{
     },
     vm::*,
 };
+use std::cell::UnsafeCell;
 
 /// Implements scanning trait
 pub struct ArtScanning;
+
+thread_local! {
+    /// Thread-local instance of the EdgeVisitor closure
+    static CLOSURE: UnsafeCell<*mut u8> = UnsafeCell::new(std::ptr::null_mut());
+}
 
 impl Scanning<Art> for ArtScanning {
     fn scan_roots_in_mutator_thread(
@@ -33,10 +39,16 @@ impl Scanning<Art> for ArtScanning {
 
     fn scan_object<EV: EdgeVisitor<ArtEdge>>(
         _tls: VMWorkerThread,
-        _object: ObjectReference,
-        _edge_visitor: &mut EV,
+        object: ObjectReference,
+        edge_visitor: &mut EV,
     ) {
-        unimplemented!()
+        unsafe {
+            CLOSURE.with(|x| *x.get() = edge_visitor as *mut EV as *mut u8);
+            ((*UPCALLS).scan_object)(
+                object,
+                scan_object_fn::<EV> as *const unsafe extern "C" fn(edge: ArtEdge),
+            );
+        }
     }
 
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
@@ -85,4 +97,16 @@ pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtEdge>>(factory: &mut F) ->
         func: report_nodes_and_renew_buffer::<F>,
         data: factory as *mut F as *mut libc::c_void,
     }
+}
+
+/// Function that allows C/C++ code to invoke the `EdgeVisitor` closure
+///
+/// # Safety
+/// This function is unsafe if the function pointer to the closure is not to an
+/// `EdgeVisitor`. It is the responsibility of the caller of this function to
+/// ensure that the closure has been registered properly.
+pub unsafe extern "C" fn scan_object_fn<EV: EdgeVisitor<ArtEdge>>(edge: ArtEdge) {
+    let ptr: *mut u8 = CLOSURE.with(|x| *x.get());
+    let closure = &mut *(ptr as *mut EV);
+    closure.visit_edge(edge);
 }
