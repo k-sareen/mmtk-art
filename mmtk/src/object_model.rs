@@ -12,7 +12,7 @@ impl ObjectModel<Art> for ArtObjectModel {
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec = VMLocalForwardingPointerSpec::in_header(0);
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec = VMLocalForwardingBitsSpec::in_header(0);
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = VMLocalLOSMarkNurserySpec::side_first();
-    const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = VMLocalMarkBitSpec::in_header(0);
+    const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = VMLocalMarkBitSpec::side_after(Self::LOCAL_LOS_MARK_NURSERY_SPEC.as_spec());
 
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
@@ -66,7 +66,7 @@ impl ObjectModel<Art> for ArtObjectModel {
     }
 
     fn ref_to_header(object: ObjectReference) -> Address {
-        unsafe { Address::from_usize(object.to_raw_address() & !0b11_usize) }
+        object.to_raw_address()
     }
 
     fn ref_to_address(object: ObjectReference) -> Address {
