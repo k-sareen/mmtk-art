@@ -102,6 +102,13 @@ Address mmtk_get_heap_start();
 Address mmtk_get_heap_end();
 
 /**
+ * Get total bytes allocated
+ *
+ * @return the total bytes allocated
+ */
+size_t mmtk_get_used_bytes();
+
+/**
  * Return if the valid object bit is set or not
  *
  * @param addr the address to be queried
@@ -159,7 +166,7 @@ MmtkMutator mmtk_bind_mutator(void* tls);
  * @param allocator the allocation sematics to use for the allocation
  * @return the address of the newly allocated object
  */
-void *mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
+void* mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
         size_t offset, AllocationSemantics semantics);
 
 /**
@@ -180,6 +187,17 @@ void mmtk_post_alloc(MmtkMutator mutator, void* object,
  * @return if the given object has been allocated by MMTk
  */
 bool mmtk_is_object_in_heap_space(const void* object);
+
+/**
+ * Request a GC to occur. A GC may not actually occur, however, if `force` is
+ * set to `true`, then a GC is guaranteed to have been requested.
+ *
+ * @param tls pointer to the mutator thread requesting GC
+ * @param force force a GC to occur
+ * @param exhaustive force a full heap GC to occur
+ * @return no return
+ */
+void mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive);
 
 // }
 } // extern "C"

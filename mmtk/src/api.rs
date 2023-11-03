@@ -149,8 +149,29 @@ pub extern "C" fn mmtk_get_heap_end() -> Address {
     mmtk::memory_manager::last_heap_address()
 }
 
+/// Get bytes allocated
+#[no_mangle]
+pub extern "C" fn mmtk_get_used_bytes() -> usize {
+    mmtk::memory_manager::used_bytes(&SINGLETON)
+}
+
 /// Check if given address is a valid object
 #[no_mangle]
 pub extern "C" fn mmtk_is_valid_object(addr: Address) -> bool {
     mmtk::memory_manager::is_mmtk_object(addr)
+}
+
+/// Handle user collection request
+#[no_mangle]
+pub extern "C" fn mmtk_handle_user_collection_request(
+    tls: VMMutatorThread,
+    force: bool,
+    exhaustive: bool
+) {
+    mmtk::memory_manager::handle_user_collection_request(
+        &SINGLETON,
+        tls,
+        force,
+        exhaustive
+    )
 }
