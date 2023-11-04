@@ -44,9 +44,7 @@ pub extern "C" fn mmtk_set_heap_size(min: usize, max: usize) -> bool {
     let policy = if min == max {
         GCTriggerSelector::FixedHeapSize(min)
     } else {
-        // TODO(kunals): Allow dynamic heap sizes when we are able to collect garbage
-        // GCTriggerSelector::DynamicHeapSize(min, max)
-        GCTriggerSelector::FixedHeapSize(max)
+        GCTriggerSelector::DynamicHeapSize(min, max)
     };
     builder.options.gc_trigger.set(policy)
 }
