@@ -110,6 +110,20 @@ Address mmtk_get_heap_start();
 Address mmtk_get_heap_end();
 
 /**
+ * Get total bytes available to the runtime
+ *
+ * @return the total bytes available
+ */
+size_t mmtk_get_total_bytes();
+
+/**
+ * Get free bytes
+ *
+ * @return the free bytes
+ */
+size_t mmtk_get_free_bytes();
+
+/**
  * Get total bytes allocated
  *
  * @return the total bytes allocated

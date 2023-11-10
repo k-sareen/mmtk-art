@@ -187,6 +187,18 @@ pub extern "C" fn mmtk_get_heap_end() -> Address {
     mmtk::memory_manager::last_heap_address()
 }
 
+/// Get total bytes available to the runtime
+#[no_mangle]
+pub extern "C" fn mmtk_get_total_bytes() -> usize {
+    mmtk::memory_manager::total_bytes(&SINGLETON)
+}
+
+/// Get free bytes
+#[no_mangle]
+pub extern "C" fn mmtk_get_free_bytes() -> usize {
+    mmtk::memory_manager::free_bytes(&SINGLETON)
+}
+
 /// Get bytes allocated
 #[no_mangle]
 pub extern "C" fn mmtk_get_used_bytes() -> usize {
