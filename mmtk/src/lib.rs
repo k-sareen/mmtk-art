@@ -168,7 +168,7 @@ pub struct ArtUpcalls {
     /// Stop all mutator threads
     pub stop_all_mutators: extern "C" fn(),
     /// Resume all mutator threads
-    pub resume_mutators: extern "C" fn(),
+    pub resume_mutators: extern "C" fn(tls: VMWorkerThread),
     /// Return the number of mutators
     pub number_of_mutators: extern "C" fn() -> usize,
     /// Return if given thread `tls` is a mutator thread

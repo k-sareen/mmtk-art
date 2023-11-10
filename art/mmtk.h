@@ -17,12 +17,20 @@ typedef void* VMThread;
 enum GcThreadKind { MmtkGcController, MmtkGcWorker };
 // Allocation semantics
 enum AllocationSemantics {
-  AllocatorDefault  = 0,
-  AllocatorImmortal = 1,
-  AllocatorLos      = 2,
-  AllocatorCode     = 3,
-  AllocatorReadOnly = 4,
+  AllocatorDefault   = 0,
+  AllocatorImmortal  = 1,
+  AllocatorLos       = 2,
+  AllocatorCode      = 3,
+  AllocatorReadOnly  = 4,
+  AllocatorLargeCode = 5,
+  AllocatorNonMoving = 6,
 };
+
+// A representation of an MMTk bump pointer for embedding in the mutator's TLS
+typedef struct {
+  Address cursor;
+  Address limit;
+} MmtkBumpPointer;
 
 // A representation of a Rust buffer
 typedef struct {
@@ -57,7 +65,7 @@ typedef struct {
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
   void (*stop_all_mutators) ();
-  void (*resume_mutators) ();
+  void (*resume_mutators) (void* tls);
   size_t (*number_of_mutators) ();
   bool (*is_mutator) (void* tls);
   MmtkMutator (*get_mmtk_mutator) (void* tls);
@@ -109,12 +117,13 @@ Address mmtk_get_heap_end();
 size_t mmtk_get_used_bytes();
 
 /**
- * Return if the valid object bit is set or not
+ * Return if the object has been marked by a GC or not (i.e. return if the
+ * object is live)
  *
- * @param addr the address to be queried
- * @return if the valid object bit is set
+ * @param object the object to be queried
+ * @return if the object is marked
  */
-bool mmtk_is_valid_object(Address addr);
+bool mmtk_is_object_marked(void* object);
 
 /**
  * Start the GC Controller thread
@@ -179,6 +188,24 @@ void* mmtk_alloc(MmtkMutator mutator, size_t size, size_t align,
  */
 void mmtk_post_alloc(MmtkMutator mutator, void* object,
         size_t size, AllocationSemantics semantics);
+
+/**
+ * Set the thread-local cursor limit for the default allocator for the given
+ * mutator thread `mutator` to the specified values in `bump_pointer`
+ *
+ * @param mutator the mutator instance
+ * @param bump_pointer the bump pointer values to set for the mutator
+ */
+void mmtk_set_default_thread_local_cursor_limit(MmtkMutator mutator, MmtkBumpPointer bump_pointer);
+
+/**
+ * Get the thread-local cursor limit for the default allocator for the given
+ * mutator thread `mutator`
+ *
+ * @param mutator the mutator instance
+ * @return the bump pointer values for the default allocator for the mutator
+ */
+MmtkBumpPointer mmtk_get_default_thread_local_cursor_limit(MmtkMutator mutator);
 
 /**
  * Check if an object has been allocated by MMTk

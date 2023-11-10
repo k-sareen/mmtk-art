@@ -13,6 +13,7 @@ use mmtk::{
         GCWorker,
     },
     util::{
+        alloc::BumpPointer,
         Address,
         ObjectReference,
         opaque_pointer::*,
@@ -127,6 +128,45 @@ pub extern "C" fn mmtk_post_alloc(
     )
 }
 
+/// Set the thread-local cursor and limit for the default allocator for the
+/// given mutator thread
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
+    mutator: *mut Mutator<Art>,
+    bump_pointer: BumpPointer
+) {
+    let selector = mmtk::memory_manager::get_allocator_mapping(
+        &SINGLETON,
+        AllocationSemantics::Default,
+    );
+    let default_allocator = unsafe {
+        (*mutator)
+            .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
+    };
+    // Copy bump pointer values to the allocator in the mutator
+    default_allocator.bump_pointer = bump_pointer;
+}
+
+/// Get the thread-local cursor and limit for the default allocator for the
+/// given mutator thread
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
+    mutator: *mut Mutator<Art>
+) -> BumpPointer {
+    let selector = mmtk::memory_manager::get_allocator_mapping(
+        &SINGLETON,
+        AllocationSemantics::Default,
+    );
+    let default_allocator = unsafe {
+        (*mutator)
+            .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
+    };
+    // Return current bump pointer values
+    default_allocator.bump_pointer
+}
+
 /// Return if an object is allocated by MMTk
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_in_heap_space(object: ObjectReference) -> bool {
@@ -153,10 +193,11 @@ pub extern "C" fn mmtk_get_used_bytes() -> usize {
     mmtk::memory_manager::used_bytes(&SINGLETON)
 }
 
-/// Check if given address is a valid object
+/// Check if given object is marked. This is used to implement the heap visitor
 #[no_mangle]
-pub extern "C" fn mmtk_is_valid_object(addr: Address) -> bool {
-    mmtk::memory_manager::is_mmtk_object(addr)
+pub extern "C" fn mmtk_is_object_marked(object: ObjectReference) -> bool {
+    // XXX(kunals): This may not really be an object...
+    object.is_reachable()
 }
 
 /// Handle user collection request

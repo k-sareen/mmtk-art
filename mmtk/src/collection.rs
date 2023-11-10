@@ -25,8 +25,8 @@ impl Collection<Art> for ArtCollection {
         unsafe { ((*UPCALLS).stop_all_mutators)() }
     }
 
-    fn resume_mutators(_tls: VMWorkerThread) {
-        unsafe { ((*UPCALLS).resume_mutators)() }
+    fn resume_mutators(tls: VMWorkerThread) {
+        unsafe { ((*UPCALLS).resume_mutators)(tls) }
     }
 
     fn block_for_gc(tls: VMMutatorThread) {
