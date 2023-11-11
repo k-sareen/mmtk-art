@@ -13,7 +13,10 @@ use mmtk::{
         GCWorker,
     },
     util::{
-        alloc::BumpPointer,
+        alloc::{
+            AllocatorSelector,
+            BumpPointer,
+        },
         Address,
         ObjectReference,
         opaque_pointer::*,
@@ -140,12 +143,39 @@ pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
         &SINGLETON,
         AllocationSemantics::Default,
     );
-    let default_allocator = unsafe {
-        (*mutator)
-            .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
+    // We only match the default allocator, so the index is always 0
+    match selector {
+        AllocatorSelector::BumpPointer(0) => {
+            let default_allocator = unsafe {
+                (*mutator)
+                    .allocator_impl_mut::<mmtk::util::alloc::BumpAllocator<Art>>(selector)
+            };
+            // Copy bump pointer values to the allocator in the mutator
+            default_allocator.bump_pointer = bump_pointer;
+        },
+        AllocatorSelector::Immix(0) => {
+            let default_allocator = unsafe {
+                (*mutator)
+                    .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
+            };
+            // Copy bump pointer values to the allocator in the mutator
+            default_allocator.bump_pointer = bump_pointer;
+        },
+        // XXX(kunals): MarkCompact is currently unsupported due to the extra
+        // header word that would need to be added to the object in the inline
+        // fast-path
+        // AllocatorSelector::MarkCompact(0) => {
+        //     let default_allocator = unsafe {
+        //         (*mutator)
+        //             .allocator_impl_mut::<mmtk::util::alloc::MarkCompactAllocator<Art>>(selector)
+        //     };
+        //     // Copy bump pointer values to the allocator in the mutator
+        //     default_allocator.bump_allocator.bump_pointer = bump_pointer;
+        // },
+        _ => {
+            panic!("No support for thread-local allocation for selector {:?}", selector);
+        }
     };
-    // Copy bump pointer values to the allocator in the mutator
-    default_allocator.bump_pointer = bump_pointer;
 }
 
 /// Get the thread-local cursor and limit for the default allocator for the
@@ -159,12 +189,39 @@ pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
         &SINGLETON,
         AllocationSemantics::Default,
     );
-    let default_allocator = unsafe {
-        (*mutator)
-            .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
-    };
-    // Return current bump pointer values
-    default_allocator.bump_pointer
+    // We only match the default allocator, so the index is always 0
+    match selector {
+        AllocatorSelector::BumpPointer(0) => {
+            let default_allocator = unsafe {
+                (*mutator)
+                    .allocator_impl_mut::<mmtk::util::alloc::BumpAllocator<Art>>(selector)
+            };
+            // Return the current bump pointer values
+            default_allocator.bump_pointer
+        },
+        AllocatorSelector::Immix(0) => {
+            let default_allocator = unsafe {
+                (*mutator)
+                    .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
+            };
+            // Return the current bump pointer values
+            default_allocator.bump_pointer
+        },
+        // XXX(kunals): MarkCompact is currently unsupported due to the extra
+        // header word that would need to be added to the object in the inline
+        // fast-path
+        // AllocatorSelector::MarkCompact(0) => {
+        //     let default_allocator = unsafe {
+        //         (*mutator)
+        //             .allocator_impl_mut::<mmtk::util::alloc::MarkCompactAllocator<Art>>(selector)
+        //     };
+        //     // Return the current bump pointer values
+        //     default_allocator.bump_allocator.bump_pointer
+        // },
+        _ => {
+            panic!("No support for thread-local allocation for selector {:?}", selector);
+        }
+    }
 }
 
 /// Return if an object is allocated by MMTk
