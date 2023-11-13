@@ -232,6 +232,19 @@ pub extern "C" fn mmtk_is_object_in_heap_space(object: ObjectReference) -> bool 
     )
 }
 
+/// Check if given object is marked. This is used to implement the heap visitor
+#[no_mangle]
+pub extern "C" fn mmtk_is_object_marked(object: ObjectReference) -> bool {
+    // XXX(kunals): This may not really be an object...
+    object.is_reachable()
+}
+
+/// Check if given object is movable by MMTk
+#[no_mangle]
+pub extern "C" fn mmtk_is_object_movable(object: ObjectReference) -> bool {
+    object.is_movable()
+}
+
 /// Get starting heap address
 #[no_mangle]
 pub extern "C" fn mmtk_get_heap_start() -> Address {
@@ -260,13 +273,6 @@ pub extern "C" fn mmtk_get_free_bytes() -> usize {
 #[no_mangle]
 pub extern "C" fn mmtk_get_used_bytes() -> usize {
     mmtk::memory_manager::used_bytes(&SINGLETON)
-}
-
-/// Check if given object is marked. This is used to implement the heap visitor
-#[no_mangle]
-pub extern "C" fn mmtk_is_object_marked(object: ObjectReference) -> bool {
-    // XXX(kunals): This may not really be an object...
-    object.is_reachable()
 }
 
 /// Handle user collection request

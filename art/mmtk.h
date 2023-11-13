@@ -140,6 +140,22 @@ size_t mmtk_get_used_bytes();
 bool mmtk_is_object_marked(void* object);
 
 /**
+ * Check if an object has been allocated by MMTk
+ *
+ * @param object address of the object
+ * @return if the given object has been allocated by MMTk
+ */
+bool mmtk_is_object_in_heap_space(const void* object);
+
+/**
+ * Check if an object is movable
+ *
+ * @param object address of the object
+ * @return if the given object can be moved by MMTk
+ */
+bool mmtk_is_object_movable(void* object);
+
+/**
  * Start the GC Controller thread
  *
  * @param tls the thread that will be used as the GC Controller
@@ -220,14 +236,6 @@ void mmtk_set_default_thread_local_cursor_limit(MmtkMutator mutator, MmtkBumpPoi
  * @return the bump pointer values for the default allocator for the mutator
  */
 MmtkBumpPointer mmtk_get_default_thread_local_cursor_limit(MmtkMutator mutator);
-
-/**
- * Check if an object has been allocated by MMTk
- *
- * @param object address of the object
- * @return if the given object has been allocated by MMTk
- */
-bool mmtk_is_object_in_heap_space(const void* object);
 
 /**
  * Request a GC to occur. A GC may not actually occur, however, if `force` is
