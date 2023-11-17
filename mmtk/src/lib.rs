@@ -24,7 +24,10 @@ use mmtk::{
             chunk_align_down,
             chunk_align_up,
         },
-        heap::vm_layout::VMLayout,
+        heap::vm_layout::{
+            BYTES_IN_CHUNK,
+            VMLayout,
+        },
         opaque_pointer::*,
     },
     vm::{
@@ -99,16 +102,28 @@ fn decompress(v: u32) -> ObjectReference {
 
 fn set_vm_layout(builder: &mut MMTKBuilder) {
     let max_heap_size = builder.options.gc_trigger.max_heap_size();
+    // Android doesn't really allow setting heap sizes > 800 MB on the
+    // command-line (so actually > 1600 MB as they double the command-line
+    // argument for the actual heap size)
     assert!(
-        max_heap_size <= (4usize << 30),
-        "Heap size is larger than 4 GB"
+        max_heap_size <= ((2usize << 30),
+        "Heap size is larger than 2 GB!"
     );
+
     let start = 0x1000_0000;
     let end = start + max_heap_size;
+
+    let heap_start = chunk_align_down(unsafe { Address::from_usize(start) });
+    // XXX(kunals): We have to add some slack to the heap end here as otherwise
+    // MMTk will fail to allocate pages for the collection reserve.
+    // See discussion here:
+    // https://mmtk.zulipchat.com/#narrow/stream/262673-mmtk-core/topic/Immix.20defragmentation.20GC.20when.20space.20is.20full
+    // for more information
+    let heap_end = chunk_align_up(unsafe { Address::from_usize(end) } + 5 * BYTES_IN_CHUNK);
     let constants = VMLayout {
         log_address_space: 32,
-        heap_start: chunk_align_down(unsafe { Address::from_usize(start) }),
-        heap_end: chunk_align_up(unsafe { Address::from_usize(end) }),
+        heap_start,
+        heap_end,
         log_space_extent: 31,
         force_use_contiguous_spaces: false,
     };
