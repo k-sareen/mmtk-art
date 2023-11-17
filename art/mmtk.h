@@ -156,6 +156,22 @@ bool mmtk_is_object_in_heap_space(const void* object);
 bool mmtk_is_object_movable(void* object);
 
 /**
+ * Check if an object has been forwarded
+ *
+ * @param object address of the object
+ * @return if the given object has been forwarded
+ */
+bool mmtk_is_object_forwarded(void* object);
+
+/**
+ * Get the forwarding address of the object
+ *
+ * @param object address of the object
+ * @return forwarding address of the object
+ */
+void* mmtk_get_forwarded_object(void* object);
+
+/**
  * Start the GC Controller thread
  *
  * @param tls the thread that will be used as the GC Controller

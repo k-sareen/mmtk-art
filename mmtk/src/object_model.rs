@@ -25,7 +25,6 @@ impl ObjectModel<Art> for ArtObjectModel {
         let bytes = Self::get_size_when_copied(from);
         let dst = copy_context.alloc_copy(from, bytes, ::std::mem::size_of::<usize>(), 0, semantics);
         let src = from.to_raw_address();
-        println!("copy {:?} -> {:?}", src, dst);
         unsafe { std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), bytes) }
         let to_obj = ObjectReference::from_raw_address(dst);
         copy_context.post_copy(to_obj, bytes, semantics);

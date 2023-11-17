@@ -239,10 +239,27 @@ pub extern "C" fn mmtk_is_object_marked(object: ObjectReference) -> bool {
     object.is_reachable()
 }
 
-/// Check if given object is movable by MMTk
+/// Check if the given object is movable by MMTk
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_movable(object: ObjectReference) -> bool {
     object.is_movable()
+}
+
+/// Check if the given object has been forwarded by MMTk
+#[no_mangle]
+pub extern "C" fn mmtk_is_object_forwarded(object: ObjectReference) -> bool {
+    object.get_forwarded_object().is_some()
+}
+
+/// Get the forwarding address of the given object if it has been forwarded.
+/// Returns `nullptr` if the object hasn't been forwarded.
+#[no_mangle]
+pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> ObjectReference {
+    let forwarded_object = object.get_forwarded_object();
+    match forwarded_object {
+        Some(obj) => obj,
+        None => ObjectReference::NULL,
+    }
 }
 
 /// Get starting heap address
