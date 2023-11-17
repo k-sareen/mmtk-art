@@ -179,6 +179,8 @@ pub struct ArtUpcalls {
     pub for_all_mutators: extern "C" fn(closure: MutatorClosure),
     /// Scan all VM roots and report nodes to MMTk
     pub scan_all_roots: extern "C" fn(closure: NodesClosure),
+    /// Sweep system weaks in ART
+    pub sweep_system_weaks: extern "C" fn(tls: VMWorkerThread),
 }
 
 /// Global static instance of upcalls

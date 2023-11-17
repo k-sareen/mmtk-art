@@ -6,6 +6,7 @@ use crate::{
     UPCALLS,
 };
 use mmtk::{
+    scheduler::GCWorker,
     Mutator,
     util::{
         Address,
@@ -49,6 +50,18 @@ impl Scanning<Art> for ArtScanning {
                 scan_object_fn::<EV> as *const unsafe extern "C" fn(edge: ArtEdge),
             );
         }
+    }
+
+    fn process_weak_refs(
+        worker: &mut GCWorker<Art>,
+        _tracer_context: impl mmtk::vm::ObjectTracerContext<Art>,
+    ) -> bool {
+        // System weaks have to be swept after the transitive closure, but
+        // before GC reclaims objects
+        unsafe {
+            ((*UPCALLS).sweep_system_weaks)(worker.tls);
+        }
+        false
     }
 
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {

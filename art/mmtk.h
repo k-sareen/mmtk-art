@@ -71,6 +71,7 @@ typedef struct {
   MmtkMutator (*get_mmtk_mutator) (void* tls);
   void (*for_all_mutators) (MutatorClosure closure);
   void (*scan_all_roots) (NodesClosure closure);
+  void (*sweep_system_weaks) (void* tls);
 } ArtUpcalls;
 
 /**
