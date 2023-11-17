@@ -106,7 +106,7 @@ fn set_vm_layout(builder: &mut MMTKBuilder) {
     // command-line (so actually > 1600 MB as they double the command-line
     // argument for the actual heap size)
     assert!(
-        max_heap_size <= ((2usize << 30),
+        max_heap_size <= (2usize << 30),
         "Heap size is larger than 2 GB!"
     );
 
