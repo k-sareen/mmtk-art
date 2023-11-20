@@ -268,9 +268,23 @@ MmtkBumpPointer mmtk_get_default_thread_local_cursor_limit(MmtkMutator mutator);
  * @param tls pointer to the mutator thread requesting GC
  * @param force force a GC to occur
  * @param exhaustive force a full heap GC to occur
- * @return no return
  */
 void mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive);
+
+/**
+ * Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC
+ * and then enable collecting statistics inside MMTk.
+ *
+ * @param tls pointer to the mutator thread calling the function
+ */
+void mmtk_harness_begin(void* tls);
+
+
+/**
+ * Generic hook to allow benchmarks to be harnessed. We stop collecting
+ * statistics and print stats values.
+ */
+void mmtk_harness_end();
 
 // }
 } // extern "C"

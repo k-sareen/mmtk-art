@@ -313,3 +313,20 @@ pub extern "C" fn mmtk_handle_user_collection_request(
         exhaustive
     )
 }
+
+/// Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC
+/// and then enable collecting statistics inside MMTk
+#[no_mangle]
+pub extern "C" fn mmtk_harness_begin(tls: VMMutatorThread) {
+    mmtk::memory_manager::harness_begin(
+        &SINGLETON,
+        tls,
+    )
+}
+
+/// Generic hook to allow benchmarks to be harnessed. We stop collecting
+/// statistics and print stats values
+#[no_mangle]
+pub extern "C" fn mmtk_harness_end() {
+    mmtk::memory_manager::harness_end(&SINGLETON)
+}
