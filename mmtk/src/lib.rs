@@ -92,9 +92,13 @@ fn decompress(v: u32) -> ObjectReference {
     if v == 0 {
         ObjectReference::NULL
     } else {
+        // We mask the lowest-order bits in case, due to concurrency, a slot
+        // (which happens to be an object) is enqueued while someone is trying
+        // to forward the same object. This could result in `slot.load()`
+        // returning the forwarding bits, hence messing up the transitive closure
         unsafe {
             ObjectReference::from_raw_address(
-                Address::from_usize(v as usize)
+                Address::from_usize((v as usize) & !0b11)
             )
         }
     }
