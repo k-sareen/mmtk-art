@@ -314,6 +314,12 @@ pub extern "C" fn mmtk_handle_user_collection_request(
     )
 }
 
+/// Return if current collection is an emergency collection
+#[no_mangle]
+pub extern "C" fn mmtk_is_emergency_collection() -> bool {
+    SINGLETON.is_emergency_collection()
+}
+
 /// Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC
 /// and then enable collecting statistics inside MMTk
 #[no_mangle]

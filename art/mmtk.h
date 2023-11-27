@@ -25,6 +25,14 @@ enum AllocationSemantics {
   AllocatorLargeCode = 5,
   AllocatorNonMoving = 6,
 };
+// Reference processing phase
+enum RefProcessingPhase {
+  ForwardSoft                  = 0,
+  ClearSoftWeak                = 1,
+  EnqueueFinalizer             = 2,
+  ClearFinalSoftWeakAndPhantom = 3,
+  SweepSystemWeaks             = 4,
+};
 
 // A representation of an MMTk bump pointer for embedding in the mutator's TLS
 typedef struct {
@@ -68,6 +76,16 @@ struct ScanObjectClosure {
   }
 };
 
+// A closure used to trace weak references during reference processing
+struct TraceObjectClosure {
+  void* (*func)(void* object, void* data);
+  void* data;
+
+  void* invoke(void* object) {
+    return func(object, data);
+  }
+};
+
 // Upcalls from MMTk to ART
 typedef struct {
   size_t (*size_of) (void* object);
@@ -81,7 +99,13 @@ typedef struct {
   MmtkMutator (*get_mmtk_mutator) (void* tls);
   void (*for_all_mutators) (MutatorClosure closure);
   void (*scan_all_roots) (NodesClosure closure);
-  void (*sweep_system_weaks) (void* tls);
+  void (*process_references) (
+    void* tls,
+    TraceObjectClosure closure,
+    RefProcessingPhase phase,
+    bool clear_soft_references
+  );
+  void (*sweep_system_weaks) ();
 } ArtUpcalls;
 
 /**
@@ -280,6 +304,15 @@ MmtkBumpPointer mmtk_get_default_thread_local_cursor_limit(MmtkMutator mutator);
  * @param exhaustive force a full heap GC to occur
  */
 void mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive);
+
+/**
+ * Return whether the current collection is an emergency collection. This is
+ * used for clearing soft references, we only need to clean soft references if
+ * we are under heap stress.
+ *
+ * @return is current collection an emergency collection or not
+ */
+bool mmtk_is_emergency_collection();
 
 /**
  * Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC

@@ -4,7 +4,9 @@ use crate::{
     NodesClosure,
     RustBuffer,
     ScanObjectClosure,
+    TraceObjectClosure,
     UPCALLS,
+    RefProcessingPhase,
 };
 use mmtk::{
     scheduler::GCWorker,
@@ -16,7 +18,10 @@ use mmtk::{
     },
     vm::*,
 };
-use std::cell::UnsafeCell;
+use std::sync::Mutex;
+
+/// Current weak reference processing phase we are executing
+static CURRENT_WEAK_REF_PHASE: Mutex<RefProcessingPhase> = Mutex::new(RefProcessingPhase::ForwardSoft);
 
 /// Implements scanning trait
 pub struct ArtScanning;
@@ -49,14 +54,82 @@ impl Scanning<Art> for ArtScanning {
 
     fn process_weak_refs(
         worker: &mut GCWorker<Art>,
-        _tracer_context: impl mmtk::vm::ObjectTracerContext<Art>,
+        tracer_context: impl mmtk::vm::ObjectTracerContext<Art>,
     ) -> bool {
-        // System weaks have to be swept after the transitive closure, but
-        // before GC reclaims objects
-        unsafe {
-            ((*UPCALLS).sweep_system_weaks)(worker.tls);
+        let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
+        match *current_phase {
+            RefProcessingPhase::ForwardSoft => {
+                unsafe {
+                    ((*UPCALLS).process_references)(
+                        worker.tls,
+                        TraceObjectClosure::from_rust_closure(&mut |object| {
+                            tracer_context.with_tracer(worker, |tracer| {
+                                tracer.trace_object(object)
+                            })
+                        }),
+                        RefProcessingPhase::ForwardSoft,
+                        crate::api::mmtk_is_emergency_collection(),
+                    );
+                }
+                *current_phase = RefProcessingPhase::ClearSoftWeak;
+                true
+            },
+            RefProcessingPhase::ClearSoftWeak => {
+                unsafe {
+                    ((*UPCALLS).process_references)(
+                        worker.tls,
+                        TraceObjectClosure::from_rust_closure(&mut |object| {
+                            tracer_context.with_tracer(worker, |tracer| {
+                                tracer.trace_object(object)
+                            })
+                        }),
+                        RefProcessingPhase::ClearSoftWeak,
+                        crate::api::mmtk_is_emergency_collection(),
+                    );
+                }
+                *current_phase = RefProcessingPhase::EnqueueFinalizer;
+                true
+            },
+            RefProcessingPhase::EnqueueFinalizer => {
+                unsafe {
+                    ((*UPCALLS).process_references)(
+                        worker.tls,
+                        TraceObjectClosure::from_rust_closure(&mut |object| {
+                            tracer_context.with_tracer(worker, |tracer| {
+                                tracer.trace_object(object)
+                            })
+                        }),
+                        RefProcessingPhase::EnqueueFinalizer,
+                        crate::api::mmtk_is_emergency_collection(),
+                    );
+                }
+                *current_phase = RefProcessingPhase::ClearFinalSoftWeakAndPhantom;
+                true
+            },
+            RefProcessingPhase::ClearFinalSoftWeakAndPhantom => {
+                unsafe {
+                    ((*UPCALLS).process_references)(
+                        worker.tls,
+                        TraceObjectClosure::from_rust_closure(&mut |object| {
+                            tracer_context.with_tracer(worker, |tracer| {
+                                tracer.trace_object(object)
+                            })
+                        }),
+                        RefProcessingPhase::ClearFinalSoftWeakAndPhantom,
+                        crate::api::mmtk_is_emergency_collection(),
+                    );
+                }
+                *current_phase = RefProcessingPhase::SweepSystemWeaks;
+                true
+            },
+            RefProcessingPhase::SweepSystemWeaks => {
+                unsafe {
+                    ((*UPCALLS).sweep_system_weaks)();
+                }
+                *current_phase = RefProcessingPhase::ForwardSoft;
+                false
+            },
         }
-        false
     }
 
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {

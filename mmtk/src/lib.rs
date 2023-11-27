@@ -63,6 +63,23 @@ pub mod scanning;
 #[derive(Default)]
 pub struct Art;
 
+#[repr(C)]
+/// What weak reference phase are we currently executing?
+pub enum RefProcessingPhase {
+    /// Forward soft references if we are not going to clear them
+    ForwardSoft                  = 0,
+    /// Clear soft and weak references with unmarked referents
+    ClearSoftWeak                = 1,
+    /// Enqueue finalizer references and perform transitive closure
+    EnqueueFinalizer             = 2,
+    /// Clear soft and weak references where the references are only reachable
+    /// by finalizers. Clear all phantom references with unmarked referents as
+    /// well
+    ClearFinalSoftWeakAndPhantom = 3,
+    /// Sweep system weaks
+    SweepSystemWeaks             = 4,
+}
+
 /// Has MMTk been initialized?
 pub static IS_MMTK_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
@@ -198,8 +215,15 @@ pub struct ArtUpcalls {
     pub for_all_mutators: extern "C" fn(closure: MutatorClosure),
     /// Scan all VM roots and report nodes to MMTk
     pub scan_all_roots: extern "C" fn(closure: NodesClosure),
+    /// Process weak references
+    pub process_references: extern "C" fn(
+        tls: VMWorkerThread,
+        closure: TraceObjectClosure,
+        phase: RefProcessingPhase,
+        clear_soft_references: bool,
+    ),
     /// Sweep system weaks in ART
-    pub sweep_system_weaks: extern "C" fn(tls: VMWorkerThread),
+    pub sweep_system_weaks: extern "C" fn(),
 }
 
 /// Global static instance of upcalls
@@ -271,4 +295,40 @@ pub struct ScanObjectClosure {
     ),
     /// The Rust context associated with the closure
     pub data: *const libc::c_void,
+}
+
+/// A closure for tracing an object. The C++ code should pass `data` back as the
+/// last argument.
+#[repr(C)]
+pub struct TraceObjectClosure {
+    /// The closure to invoke
+    pub func: extern "C" fn(
+        object: ObjectReference,
+        data: *mut libc::c_void,
+    ) -> ObjectReference,
+    /// The Rust context associated with the closure
+    pub data: *const libc::c_void,
+}
+
+impl TraceObjectClosure {
+    fn from_rust_closure<F>(callback: &mut F) -> Self
+    where
+        F: FnMut(ObjectReference) -> ObjectReference,
+    {
+        Self {
+            func: Self::call_rust_closure::<F>,
+            data: callback as *mut F as *mut libc::c_void,
+        }
+    }
+
+    extern "C" fn call_rust_closure<F>(
+        object: ObjectReference,
+        callback_ptr: *mut libc::c_void,
+    ) -> ObjectReference
+    where
+        F: FnMut(ObjectReference) -> ObjectReference,
+    {
+        let callback: &mut F = unsafe { &mut *(callback_ptr as *mut F) };
+        callback(object)
+    }
 }
