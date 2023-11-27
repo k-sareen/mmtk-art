@@ -3,6 +3,7 @@ use crate::{
     ArtEdge,
     NodesClosure,
     RustBuffer,
+    ScanObjectClosure,
     UPCALLS,
 };
 use mmtk::{
@@ -19,11 +20,6 @@ use std::cell::UnsafeCell;
 
 /// Implements scanning trait
 pub struct ArtScanning;
-
-thread_local! {
-    /// Thread-local instance of the EdgeVisitor closure
-    static CLOSURE: UnsafeCell<*mut u8> = UnsafeCell::new(std::ptr::null_mut());
-}
 
 impl Scanning<Art> for ArtScanning {
     fn scan_roots_in_mutator_thread(
@@ -44,10 +40,9 @@ impl Scanning<Art> for ArtScanning {
         edge_visitor: &mut EV,
     ) {
         unsafe {
-            CLOSURE.with(|x| *x.get() = edge_visitor as *mut EV as *mut u8);
             ((*UPCALLS).scan_object)(
                 object,
-                scan_object_fn::<EV> as *const unsafe extern "C" fn(edge: ArtEdge),
+                to_scan_object_closure::<EV>(edge_visitor),
             );
         }
     }
@@ -104,22 +99,31 @@ extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
     RustBuffer { ptr, capacity }
 }
 
-/// Convert a RootsWorkFactory into an NodesClosure
-pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtEdge>>(factory: &mut F) -> NodesClosure {
+/// Function that allows C/C++ code to invoke a `ScanObjectClosure` closure
+extern "C" fn scan_object_fn<EV: EdgeVisitor<ArtEdge>>(
+    edge: ArtEdge,
+    edge_visitor_ptr: *mut libc::c_void
+) {
+    let edge_visitor: &mut EV = unsafe { &mut *(edge_visitor_ptr as *mut EV) };
+    edge_visitor.visit_edge(edge);
+}
+
+/// Convert a `RootsWorkFactory` into a `NodesClosure`
+pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtEdge>>(
+    factory: &mut F
+) -> NodesClosure {
     NodesClosure {
         func: report_nodes_and_renew_buffer::<F>,
         data: factory as *mut F as *mut libc::c_void,
     }
 }
 
-/// Function that allows C/C++ code to invoke the `EdgeVisitor` closure
-///
-/// # Safety
-/// This function is unsafe if the function pointer to the closure is not to an
-/// `EdgeVisitor`. It is the responsibility of the caller of this function to
-/// ensure that the closure has been registered properly.
-pub unsafe extern "C" fn scan_object_fn<EV: EdgeVisitor<ArtEdge>>(edge: ArtEdge) {
-    let ptr: *mut u8 = CLOSURE.with(|x| *x.get());
-    let closure = &mut *(ptr as *mut EV);
-    closure.visit_edge(edge);
+/// Convert an `EdgeVisitor` to a `ScanObjectClosure`
+pub(crate) fn to_scan_object_closure<EV: EdgeVisitor<ArtEdge>>(
+    edge_visitor: &mut EV
+) -> ScanObjectClosure {
+    ScanObjectClosure {
+        func: scan_object_fn::<EV>,
+        data: edge_visitor as *mut EV as *mut libc::c_void,
+    }
 }

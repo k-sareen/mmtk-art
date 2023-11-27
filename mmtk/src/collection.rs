@@ -11,7 +11,7 @@ pub enum GcThreadKind {
     /// GC Controller Context thread
     Controller = 0,
     /// Simple GC Worker thread
-    Worker = 1,
+    Worker     = 1,
 }
 
 /// Implements collection trait

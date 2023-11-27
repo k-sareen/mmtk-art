@@ -170,7 +170,7 @@ pub struct ArtUpcalls {
     /// Scan object for references
     pub scan_object: extern "C" fn(
         object: ObjectReference,
-        closure: *const unsafe extern "C" fn(edge: ArtEdge)
+        closure: ScanObjectClosure,
     ),
     /// Block mutator thread for GC
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
@@ -252,6 +252,19 @@ pub struct NodesClosure {
         cap: usize,
         data: *mut libc::c_void,
     ) -> RustBuffer,
+    /// The Rust context associated with the closure
+    pub data: *const libc::c_void,
+}
+
+/// A closure for scanning an object for references. The C++ code should pass
+/// `data` back as the last argument.
+#[repr(C)]
+pub struct ScanObjectClosure {
+    /// The closure to invoke
+    pub func: extern "C" fn(
+        edge: ArtEdge,
+        data: *mut libc::c_void,
+    ),
     /// The Rust context associated with the closure
     pub data: *const libc::c_void,
 }
