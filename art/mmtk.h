@@ -27,11 +27,9 @@ enum AllocationSemantics {
 };
 // Reference processing phase
 enum RefProcessingPhase {
-  ForwardSoft                  = 0,
-  ClearSoftWeak                = 1,
-  EnqueueFinalizer             = 2,
-  ClearFinalSoftWeakAndPhantom = 3,
-  SweepSystemWeaks             = 4,
+  Phase1 = 0,
+  Phase2 = 1,
+  Phase3 = 2,
 };
 
 // A representation of an MMTk bump pointer for embedding in the mutator's TLS

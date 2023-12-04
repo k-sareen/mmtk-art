@@ -67,17 +67,14 @@ pub struct Art;
 /// What weak reference phase are we currently executing?
 pub enum RefProcessingPhase {
     /// Forward soft references if we are not going to clear them
-    ForwardSoft                  = 0,
-    /// Clear soft and weak references with unmarked referents
-    ClearSoftWeak                = 1,
-    /// Enqueue finalizer references and perform transitive closure
-    EnqueueFinalizer             = 2,
+    Phase1 = 0,
+    /// Clear soft and weak references with unmarked referents. Enqueue
+    /// finalizer references and perform transitive closure
+    Phase2 = 1,
     /// Clear soft and weak references where the references are only reachable
-    /// by finalizers. Clear all phantom references with unmarked referents as
-    /// well
-    ClearFinalSoftWeakAndPhantom = 3,
-    /// Sweep system weaks
-    SweepSystemWeaks             = 4,
+    /// by finalizers. Clear all phantom references with unmarked referents. And
+    /// finally sweep system weaks.
+    Phase3 = 2,
 }
 
 /// Has MMTk been initialized?

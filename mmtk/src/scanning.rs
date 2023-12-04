@@ -21,7 +21,7 @@ use mmtk::{
 use std::sync::Mutex;
 
 /// Current weak reference processing phase we are executing
-static CURRENT_WEAK_REF_PHASE: Mutex<RefProcessingPhase> = Mutex::new(RefProcessingPhase::ForwardSoft);
+static CURRENT_WEAK_REF_PHASE: Mutex<RefProcessingPhase> = Mutex::new(RefProcessingPhase::Phase1);
 
 /// Implements scanning trait
 pub struct ArtScanning;
@@ -58,7 +58,7 @@ impl Scanning<Art> for ArtScanning {
     ) -> bool {
         let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
         match *current_phase {
-            RefProcessingPhase::ForwardSoft => {
+            RefProcessingPhase::Phase1 => {
                 unsafe {
                     ((*UPCALLS).process_references)(
                         worker.tls,
@@ -67,14 +67,14 @@ impl Scanning<Art> for ArtScanning {
                                 tracer.trace_object(object)
                             })
                         }),
-                        RefProcessingPhase::ForwardSoft,
+                        RefProcessingPhase::Phase1,
                         crate::api::mmtk_is_emergency_collection(),
                     );
                 }
-                *current_phase = RefProcessingPhase::ClearSoftWeak;
+                *current_phase = RefProcessingPhase::Phase2;
                 true
             },
-            RefProcessingPhase::ClearSoftWeak => {
+            RefProcessingPhase::Phase2 => {
                 unsafe {
                     ((*UPCALLS).process_references)(
                         worker.tls,
@@ -83,14 +83,14 @@ impl Scanning<Art> for ArtScanning {
                                 tracer.trace_object(object)
                             })
                         }),
-                        RefProcessingPhase::ClearSoftWeak,
+                        RefProcessingPhase::Phase2,
                         crate::api::mmtk_is_emergency_collection(),
                     );
                 }
-                *current_phase = RefProcessingPhase::EnqueueFinalizer;
+                *current_phase = RefProcessingPhase::Phase3;
                 true
             },
-            RefProcessingPhase::EnqueueFinalizer => {
+            RefProcessingPhase::Phase3 => {
                 unsafe {
                     ((*UPCALLS).process_references)(
                         worker.tls,
@@ -99,34 +99,11 @@ impl Scanning<Art> for ArtScanning {
                                 tracer.trace_object(object)
                             })
                         }),
-                        RefProcessingPhase::EnqueueFinalizer,
+                        RefProcessingPhase::Phase3,
                         crate::api::mmtk_is_emergency_collection(),
                     );
                 }
-                *current_phase = RefProcessingPhase::ClearFinalSoftWeakAndPhantom;
-                true
-            },
-            RefProcessingPhase::ClearFinalSoftWeakAndPhantom => {
-                unsafe {
-                    ((*UPCALLS).process_references)(
-                        worker.tls,
-                        TraceObjectClosure::from_rust_closure(&mut |object| {
-                            tracer_context.with_tracer(worker, |tracer| {
-                                tracer.trace_object(object)
-                            })
-                        }),
-                        RefProcessingPhase::ClearFinalSoftWeakAndPhantom,
-                        crate::api::mmtk_is_emergency_collection(),
-                    );
-                }
-                *current_phase = RefProcessingPhase::SweepSystemWeaks;
-                true
-            },
-            RefProcessingPhase::SweepSystemWeaks => {
-                unsafe {
-                    ((*UPCALLS).sweep_system_weaks)();
-                }
-                *current_phase = RefProcessingPhase::ForwardSoft;
+                *current_phase = RefProcessingPhase::Phase1;
                 false
             },
         }
