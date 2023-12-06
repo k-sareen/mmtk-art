@@ -33,18 +33,24 @@ use mmtk::{
     vm::{
         edge_shape::{
             Edge,
-            UnimplementedMemorySlice,
+            MemorySlice,
         },
         VMBinding,
     },
 };
 use std::{
+    ops::Range,
     ptr::null_mut,
     sync::{
         Mutex,
         atomic::{AtomicBool, Ordering},
     }
 };
+
+/// log_2 of how many bytes in an integer
+const LOG_BYTES_IN_INT:  u8 = 2;
+/// log_2 of how many bytes in an edge
+const LOG_BYTES_IN_EDGE: u8 = 2;
 
 /// Module which implements `ActivePlan` trait
 pub mod active_plan;
@@ -164,6 +170,72 @@ impl Edge for ArtEdge {
     }
 }
 
+/// A range of `ArtEdge`s, usually used to represent arrays
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ArtMemorySlice {
+    range: Range<ArtEdge>,
+}
+
+/// An iterator through an ArtMemorySlice
+pub struct ArtEdgeIterator {
+    cursor: Address,
+    limit: Address,
+}
+
+impl Iterator for ArtEdgeIterator {
+    type Item = ArtEdge;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cursor >= self.limit {
+            None
+        } else {
+            let edge = self.cursor;
+            self.cursor += (1 << LOG_BYTES_IN_EDGE) as usize;
+            Some(ArtEdge(edge))
+        }
+    }
+}
+
+impl MemorySlice for ArtMemorySlice {
+    type Edge = ArtEdge;
+    type EdgeIterator = ArtEdgeIterator;
+
+    fn iter_edges(&self) -> Self::EdgeIterator {
+        ArtEdgeIterator {
+            cursor: self.range.start.0,
+            limit: self.range.end.0,
+        }
+    }
+
+    fn object(&self) -> Option<ObjectReference> {
+        None
+    }
+
+    fn start(&self) -> Address {
+        self.range.start.0
+    }
+
+    fn bytes(&self) -> usize {
+        self.range.end.0 - self.range.start.0
+    }
+
+    fn copy(src: &Self, tgt: &Self) {
+        debug_assert_eq!(src.bytes(), tgt.bytes());
+        // Raw memory copy
+        debug_assert_eq!(
+            src.bytes() & ((1 << LOG_BYTES_IN_INT) - 1),
+            0,
+            "bytes are not a multiple of 32-bit integers"
+        );
+        unsafe {
+            let words = tgt.bytes() >> LOG_BYTES_IN_INT;
+            let src = src.start().to_ptr::<u32>();
+            let tgt = tgt.start().to_mut_ptr::<u32>();
+            std::ptr::copy(src, tgt, words)
+        }
+    }
+}
+
 impl VMBinding for Art {
     type VMActivePlan = ArtActivePlan;
     type VMCollection = ArtCollection;
@@ -172,7 +244,7 @@ impl VMBinding for Art {
     type VMScanning = ArtScanning;
 
     type VMEdge = ArtEdge;
-    type VMMemorySlice = UnimplementedMemorySlice<ArtEdge>;
+    type VMMemorySlice = ArtMemorySlice;
 
     const MIN_ALIGNMENT: usize = 8;
     const MAX_ALIGNMENT: usize = 8;
