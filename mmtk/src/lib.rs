@@ -176,6 +176,17 @@ pub struct ArtMemorySlice {
     range: Range<ArtEdge>,
 }
 
+impl From<Range<Address>> for ArtMemorySlice {
+    fn from(value: Range<Address>) -> Self {
+        Self {
+            range: Range {
+                start: ArtEdge(value.start),
+                end: ArtEdge(value.end),
+            },
+        }
+    }
+}
+
 /// An iterator through an ArtMemorySlice
 pub struct ArtEdgeIterator {
     cursor: Address,

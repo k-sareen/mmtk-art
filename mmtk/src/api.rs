@@ -1,13 +1,16 @@
 use crate::{
     Art,
+    ArtEdge,
     ArtUpcalls,
     BUILDER,
+    LOG_BYTES_IN_EDGE,
     SINGLETON,
     UPCALLS,
 };
 use mmtk::{
     AllocationSemantics,
     Mutator,
+    MutatorContext,
     scheduler::{
         GCController,
         GCWorker,
@@ -318,6 +321,76 @@ pub extern "C" fn mmtk_handle_user_collection_request(
 #[no_mangle]
 pub extern "C" fn mmtk_is_emergency_collection() -> bool {
     SINGLETON.is_emergency_collection()
+}
+
+/// Perform a pre-write barrier for a given source, slot, and target. Only call
+/// this before the object has been modified
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_object_reference_write_pre(
+    mutator: *mut Mutator<Art>,
+    src: ObjectReference,
+    slot: ArtEdge,
+    target: ObjectReference,
+) {
+    unsafe {
+        (*mutator)
+            .barrier()
+            .object_reference_write_pre(src, slot, target);
+    }
+}
+
+/// Perform a post-write barrier for a given source, slot, and target. Only call
+/// this after the object has been modified
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_object_reference_write_post(
+    mutator: *mut Mutator<Art>,
+    src: ObjectReference,
+    slot: ArtEdge,
+    target: ObjectReference,
+) {
+    unsafe {
+        (*mutator)
+            .barrier()
+            .object_reference_write_post(src, slot, target);
+    }
+}
+
+/// Perform a pre-array copy barrier for given source, target, and count. Only
+/// call this before the array has been copied
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_array_copy_pre(
+    mutator: *mut Mutator<Art>,
+    src: Address,
+    dst: Address,
+    count: usize,
+) {
+    let bytes: usize = count << LOG_BYTES_IN_EDGE;
+    unsafe {
+        (*mutator)
+            .barrier()
+            .memory_region_copy_pre((src..src + bytes).into(), (dst..dst + bytes).into());
+    }
+}
+
+/// Perform a post-array copy barrier for given source, target, and count. Only
+/// call this before the array has been copied
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_array_copy_post(
+    mutator: *mut Mutator<Art>,
+    src: Address,
+    dst: Address,
+    count: usize,
+) {
+    let bytes: usize = count << LOG_BYTES_IN_EDGE;
+    unsafe {
+        (*mutator)
+            .barrier()
+            .memory_region_copy_post((src..src + bytes).into(), (dst..dst + bytes).into());
+    }
 }
 
 /// Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC

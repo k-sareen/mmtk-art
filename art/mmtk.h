@@ -313,13 +313,60 @@ void mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive)
 bool mmtk_is_emergency_collection();
 
 /**
+ * Perform a pre-write barrier for a given source, slot, and target. Only call
+ * this before the object has been modified
+ *
+ * @param mutator mutator executing the barrier code
+ * @param src source object being modified
+ * @param slot address of the field being modified
+ * @param target target object to be written to the field
+ */
+void mmtk_object_reference_write_pre(MmtkMutator mutator, void* src,
+        void* slot, void* target);
+
+/**
+ * Perform a post-write barrier for a given source, slot, and target. Only call
+ * this after the object has been modified
+ *
+ * @param mutator mutator executing the barrier code
+ * @param src source object being modified
+ * @param slot address of the field being modified
+ * @param target target object to be written to the field
+ */
+void mmtk_object_reference_write_post(MmtkMutator mutator, void* src,
+        void* slot, void* target);
+
+/**
+ * Perform a pre-array copy barrier for given source, target, and count. Only
+ * call this before the array has been copied
+ *
+ * @param mutator mutator executing the barrier code
+ * @param src source array slice
+ * @param dst destination array slice
+ * @param count total count of elements to be written
+ */
+void mmtk_array_copy_pre(MmtkMutator mutator, void* src,
+        void* dst, size_t count);
+
+/**
+ * Perform a post-array copy barrier for given source, target, and count. Only
+ * call this after the array has been copied
+ *
+ * @param mutator mutator executing the barrier code
+ * @param src source array slice
+ * @param dst destination array slice
+ * @param count total count of elements to be written
+ */
+void mmtk_array_copy_post(MmtkMutator mutator, void* src,
+        void* dst, size_t count);
+
+/**
  * Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC
  * and then enable collecting statistics inside MMTk.
  *
  * @param tls pointer to the mutator thread calling the function
  */
 void mmtk_harness_begin(void* tls);
-
 
 /**
  * Generic hook to allow benchmarks to be harnessed. We stop collecting
