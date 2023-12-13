@@ -98,6 +98,13 @@ pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut Mutator<Art> {
     Box::into_raw(mmtk::memory_manager::bind_mutator(&SINGLETON, tls))
 }
 
+/// Flush a mutator instance in MMTk
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn mmtk_flush_mutator(mutator: *mut Mutator<Art>) {
+    mmtk::memory_manager::flush_mutator(unsafe { &mut *mutator });
+}
+
 /// Destroy a mutator instance in MMTk
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]

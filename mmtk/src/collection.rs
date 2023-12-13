@@ -1,6 +1,11 @@
-use crate::{Art, UPCALLS};
+use crate::{
+    Art,
+    MutatorClosure,
+    UPCALLS,
+};
 use mmtk::{
     Mutator,
+    MutatorContext,
     util::opaque_pointer::*,
     vm::{Collection, GCThreadContext},
 };
@@ -23,6 +28,12 @@ impl Collection<Art> for ArtCollection {
         F: FnMut(&'static mut Mutator<Art>),
     {
         unsafe { ((*UPCALLS).stop_all_mutators)() }
+        // Flush remembered sets
+        unsafe {
+            ((*UPCALLS).for_all_mutators)(MutatorClosure::from_rust_closure(&mut |mutator| {
+                mutator.flush();
+            }));
+        }
     }
 
     fn resume_mutators(tls: VMWorkerThread) {

@@ -245,6 +245,13 @@ void mmtk_release_rust_buffer(void** buffer, size_t length, size_t capacity);
 MmtkMutator mmtk_bind_mutator(void* tls);
 
 /**
+ * Flush a mutator instance in MMTk.
+ *
+ * @param mutator pointer to MMTk mutator instance
+ */
+void mmtk_flush_mutator(MmtkMutator mutator);
+
+/**
  * Destroy a mutator instance in MMTk.
  *
  * @param mutator pointer to MMTk mutator instance
