@@ -23,12 +23,15 @@ pub enum GcThreadKind {
 pub struct ArtCollection;
 
 impl Collection<Art> for ArtCollection {
-    fn stop_all_mutators<F>(_tls: VMWorkerThread, _mutator_visitor: F)
+    fn stop_all_mutators<F>(tls: VMWorkerThread, _mutator_visitor: F)
     where
         F: FnMut(&'static mut Mutator<Art>),
     {
-        unsafe { ((*UPCALLS).stop_all_mutators)() }
+        unsafe { ((*UPCALLS).suspend_mutators)(tls) }
+
         // Flush remembered sets
+        // XXX(kunals): Relevant MMTk issue to keep track of for flushing
+        // mutator state: https://github.com/mmtk/mmtk-core/issues/1047
         unsafe {
             ((*UPCALLS).for_all_mutators)(MutatorClosure::from_rust_closure(&mut |mutator| {
                 mutator.flush();

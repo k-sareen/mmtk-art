@@ -282,7 +282,7 @@ pub struct ArtUpcalls {
         ctx: *mut libc::c_void
     ),
     /// Stop all mutator threads
-    pub stop_all_mutators: extern "C" fn(),
+    pub suspend_mutators: extern "C" fn(tls: VMWorkerThread),
     /// Resume all mutator threads
     pub resume_mutators: extern "C" fn(tls: VMWorkerThread),
     /// Return the number of mutators

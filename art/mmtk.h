@@ -90,7 +90,7 @@ typedef struct {
   void (*scan_object) (void* object, ScanObjectClosure closure);
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
-  void (*stop_all_mutators) ();
+  void (*suspend_mutators) (void* tls);
   void (*resume_mutators) (void* tls);
   size_t (*number_of_mutators) ();
   bool (*is_mutator) (void* tls);
