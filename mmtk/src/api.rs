@@ -309,6 +309,15 @@ pub extern "C" fn mmtk_get_used_bytes() -> usize {
     mmtk::memory_manager::used_bytes(&SINGLETON)
 }
 
+/// Set the image space address and size to make MMTk aware of the boot image
+#[no_mangle]
+#[allow(mutable_transmutes)]
+pub extern "C" fn mmtk_set_image_space(boot_image_start_address: Address, boot_image_size: usize) {
+    let mmtk: &mmtk::MMTK<Art> = &SINGLETON;
+    let mmtk_mut: &mut mmtk::MMTK<Art> = unsafe { std::mem::transmute(mmtk) };
+    mmtk::memory_manager::set_vm_space(mmtk_mut, boot_image_start_address, boot_image_size);
+}
+
 /// Handle user collection request
 #[no_mangle]
 pub extern "C" fn mmtk_handle_user_collection_request(

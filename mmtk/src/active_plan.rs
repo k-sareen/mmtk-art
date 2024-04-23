@@ -5,7 +5,9 @@ use crate::{
 };
 use mmtk::{
     Mutator,
-    util::opaque_pointer::*,
+    util::{opaque_pointer::*, ObjectReference},
+    plan::ObjectQueue,
+    scheduler::GCWorker,
     vm::ActivePlan,
 };
 use std::{
@@ -34,6 +36,15 @@ impl ActivePlan<Art> for ArtActivePlan {
 
     fn mutators<'a>() -> Box<dyn Iterator<Item = &'a mut Mutator<Art>> + 'a> {
         Box::new(ArtMutatorIterator::new())
+    }
+
+    fn vm_trace_object<Q: ObjectQueue>(
+        queue: &mut Q,
+        object: ObjectReference,
+        _worker: &mut GCWorker<Art>,
+    ) -> ObjectReference {
+        queue.enqueue(object);
+        object
     }
 }
 

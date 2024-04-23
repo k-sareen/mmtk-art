@@ -2,6 +2,7 @@
 #define MMTK_ART_MMTK_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/types.h>
 
 extern "C" {
@@ -162,6 +163,14 @@ size_t mmtk_get_free_bytes();
  * @return the total bytes allocated
  */
 size_t mmtk_get_used_bytes();
+
+/**
+ * Set the image space address and size to make MMTk aware of the boot image
+ *
+ * @param boot_image_start_address the starting address of the boot image
+ * @param boot_image_size the size of the boot image space
+ */
+void mmtk_set_image_space(uint32_t boot_image_start_address, uint32_t boot_image_size);
 
 /**
  * Return if the object has been marked by a GC or not (i.e. return if the
