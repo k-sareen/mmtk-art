@@ -20,14 +20,17 @@ pub struct ArtActivePlan;
 
 impl ActivePlan<Art> for ArtActivePlan {
     fn number_of_mutators() -> usize {
+        // SAFETY: Assumes upcalls is valid
         unsafe { ((*UPCALLS).number_of_mutators)() }
     }
 
     fn is_mutator(tls: VMThread) -> bool {
+        // SAFETY: Assumes upcalls is valid
         unsafe { ((*UPCALLS).is_mutator)(tls) }
     }
 
     fn mutator(tls: VMMutatorThread) -> &'static mut Mutator<Art> {
+        // SAFETY: Assumes upcalls is valid
         unsafe {
             let m = ((*UPCALLS).get_mmtk_mutator)(tls);
             &mut *m
@@ -57,6 +60,7 @@ struct ArtMutatorIterator<'a> {
 impl<'a> ArtMutatorIterator<'a> {
     fn new() -> Self {
         let mut mutators = VecDeque::new();
+        // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).for_all_mutators)(MutatorClosure::from_rust_closure(&mut |mutator| {
                 mutators.push_back(mutator);

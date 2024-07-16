@@ -116,6 +116,7 @@ fn decompress(v: u32) -> ObjectReference {
         // (which happens to be an object) is enqueued while someone is trying
         // to forward the same object. This could result in `slot.load()`
         // returning the forwarding bits, hence messing up the transitive closure
+        // SAFETY: Assumes v is valid
         unsafe {
             ObjectReference::from_raw_address(
                 Address::from_usize((v as usize) & !0b11)
@@ -137,12 +138,14 @@ fn set_vm_layout(builder: &mut MMTKBuilder) {
     let start = 0x1000_0000;
     let end = start + max_heap_size;
 
+    // SAFETY: start is a valid address from above
     let heap_start = chunk_align_down(unsafe { Address::from_usize(start) });
     // XXX(kunals): We have to add some slack to the heap end here as otherwise
     // MMTk will fail to allocate pages for the collection reserve.
     // See discussion here:
     // https://mmtk.zulipchat.com/#narrow/stream/262673-mmtk-core/topic/Immix.20defragmentation.20GC.20when.20space.20is.20full
     // for more information
+    // SAFETY: end is a valid address from above
     let heap_end = chunk_align_up(unsafe { Address::from_usize(end) } + 5 * BYTES_IN_CHUNK);
     let constants = VMLayout {
         log_address_space: 32,
@@ -162,10 +165,12 @@ pub struct ArtEdge(pub Address);
 
 impl Edge for ArtEdge {
     fn load(&self) -> ObjectReference {
+        // SAFETY: Assumes internal address is valid
         decompress(unsafe { self.0.load::<u32>() })
     }
 
     fn store(&self, object: ObjectReference) {
+        // SAFETY: Assumes internal address is valid
         unsafe { self.0.store::<u32>(compress(object)) }
     }
 }
@@ -238,6 +243,7 @@ impl MemorySlice for ArtMemorySlice {
             0,
             "bytes are not a multiple of 32-bit integers"
         );
+        // SAFETY: Assumes src and tgt are valid addresses
         unsafe {
             let words = tgt.bytes() >> LOG_BYTES_IN_INT;
             let src = src.start().to_ptr::<u32>();
@@ -336,7 +342,9 @@ impl MutatorClosure {
     ) where
         F: FnMut(&'static mut Mutator<Art>),
     {
+        // SAFETY: Assumes callback is valid
         let callback: &mut F = unsafe { &mut *(callback_ptr as *mut F) };
+        // SAFETY: Assumes mutator is valid
         callback(unsafe { &mut *mutator });
     }
 }
@@ -408,6 +416,7 @@ impl TraceObjectClosure {
     where
         F: FnMut(ObjectReference) -> ObjectReference,
     {
+        // SAFETY: Assumes the callback is valid
         let callback: &mut F = unsafe { &mut *(callback_ptr as *mut F) };
         callback(object)
     }

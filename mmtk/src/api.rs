@@ -30,6 +30,7 @@ use std::sync::atomic::Ordering;
 /// Initialize MMTk instance
 #[no_mangle]
 pub extern "C" fn mmtk_init(upcalls: *const ArtUpcalls) {
+    // SAFETY: Assumes upcalls is valid
     unsafe { UPCALLS = upcalls };
     // Make sure that we haven't initialized MMTk (by accident) yet
     assert!(!crate::IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
@@ -63,6 +64,7 @@ pub extern "C" fn mmtk_start_gc_controller_thread(
     tls: VMWorkerThread,
     gc_controller: *mut GCController<Art>,
 ) {
+    // SAFETY: Assumes gc_controller is valid
     let mut gc_controller = unsafe { Box::from_raw(gc_controller) };
     mmtk::memory_manager::start_control_collector(&SINGLETON, tls, &mut gc_controller);
 }
@@ -74,6 +76,7 @@ pub extern "C" fn mmtk_start_gc_worker_thread(
     tls: VMWorkerThread,
     worker: *mut GCWorker<Art>
 ) {
+    // SAFETY: Assumes worker is valid
     let mut worker = unsafe { Box::from_raw(worker) };
     mmtk::memory_manager::start_worker::<Art>(&SINGLETON, tls, &mut worker)
 }
@@ -88,8 +91,11 @@ pub unsafe extern "C" fn mmtk_release_rust_buffer(
     length: usize,
     capacity: usize,
 ) {
-    let vec = Vec::<Address>::from_raw_parts(ptr, length, capacity);
-    drop(vec);
+    // SAFETY: Assumes ptr is valid
+    unsafe {
+        let vec = Vec::<Address>::from_raw_parts(ptr, length, capacity);
+        drop(vec);
+    }
 }
 
 /// Bind a mutator thread in MMTk
@@ -102,6 +108,7 @@ pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut Mutator<Art> {
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn mmtk_flush_mutator(mutator: *mut Mutator<Art>) {
+    // SAFETY: Assumes mutator is valid
     mmtk::memory_manager::flush_mutator(unsafe { &mut *mutator });
 }
 
@@ -109,6 +116,7 @@ pub extern "C" fn mmtk_flush_mutator(mutator: *mut Mutator<Art>) {
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<Art>) {
+    // SAFETY: Assumes mutator is valid
     mmtk::memory_manager::destroy_mutator(unsafe { &mut *mutator });
 }
 
@@ -123,6 +131,7 @@ pub extern "C" fn mmtk_alloc(
     allocator: AllocationSemantics,
 ) -> Address {
     mmtk::memory_manager::alloc::<Art>(
+        // SAFETY: Assumes mutator is valid
         unsafe { &mut *mutator },
         size,
         align,
@@ -141,6 +150,7 @@ pub extern "C" fn mmtk_post_alloc(
     allocator: AllocationSemantics,
 ) {
     mmtk::memory_manager::post_alloc::<Art>(
+        // SAFETY: Assumes mutator is valid
         unsafe { &mut *mutator },
         object,
         size,
@@ -163,6 +173,7 @@ pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
     // We only match the default allocator, so the index is always 0
     match selector {
         AllocatorSelector::BumpPointer(0) => {
+            // SAFETY: Assumes mutator is valid
             let default_allocator = unsafe {
                 (*mutator)
                     .allocator_impl_mut::<mmtk::util::alloc::BumpAllocator<Art>>(selector)
@@ -171,6 +182,7 @@ pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
             default_allocator.bump_pointer = bump_pointer;
         },
         AllocatorSelector::Immix(0) => {
+            // SAFETY: Assumes mutator is valid
             let default_allocator = unsafe {
                 (*mutator)
                     .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
@@ -209,6 +221,7 @@ pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
     // We only match the default allocator, so the index is always 0
     match selector {
         AllocatorSelector::BumpPointer(0) => {
+            // SAFETY: Assumes mutator is valid
             let default_allocator = unsafe {
                 (*mutator)
                     .allocator_impl_mut::<mmtk::util::alloc::BumpAllocator<Art>>(selector)
@@ -217,6 +230,7 @@ pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
             default_allocator.bump_pointer
         },
         AllocatorSelector::Immix(0) => {
+            // SAFETY: Assumes mutator is valid
             let default_allocator = unsafe {
                 (*mutator)
                     .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
@@ -314,6 +328,7 @@ pub extern "C" fn mmtk_get_used_bytes() -> usize {
 #[allow(mutable_transmutes)]
 pub extern "C" fn mmtk_set_image_space(boot_image_start_address: Address, boot_image_size: usize) {
     let mmtk: &mmtk::MMTK<Art> = &SINGLETON;
+    // SAFETY: Assumes mmtk is valid
     let mmtk_mut: &mut mmtk::MMTK<Art> = unsafe { std::mem::transmute(mmtk) };
     mmtk::memory_manager::set_vm_space(mmtk_mut, boot_image_start_address, boot_image_size);
 }
@@ -349,6 +364,7 @@ pub extern "C" fn mmtk_object_reference_write_pre(
     slot: ArtEdge,
     target: ObjectReference,
 ) {
+    // SAFETY: Assumes mutator is valid
     unsafe {
         (*mutator)
             .barrier()
@@ -366,6 +382,7 @@ pub extern "C" fn mmtk_object_reference_write_post(
     slot: ArtEdge,
     target: ObjectReference,
 ) {
+    // SAFETY: Assumes mutator is valid
     unsafe {
         (*mutator)
             .barrier()
@@ -384,6 +401,7 @@ pub extern "C" fn mmtk_array_copy_pre(
     count: usize,
 ) {
     let bytes: usize = count << LOG_BYTES_IN_EDGE;
+    // SAFETY: Assumes mutator is valid
     unsafe {
         (*mutator)
             .barrier()
@@ -402,6 +420,7 @@ pub extern "C" fn mmtk_array_copy_post(
     count: usize,
 ) {
     let bytes: usize = count << LOG_BYTES_IN_EDGE;
+    // SAFETY: Assumes mutator is valid
     unsafe {
         (*mutator)
             .barrier()

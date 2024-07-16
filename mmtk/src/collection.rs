@@ -27,11 +27,13 @@ impl Collection<Art> for ArtCollection {
     where
         F: FnMut(&'static mut Mutator<Art>),
     {
+        // SAFETY: Assumes upcalls is valid
         unsafe { ((*UPCALLS).suspend_mutators)(tls) }
 
         // Flush remembered sets
         // XXX(kunals): Relevant MMTk issue to keep track of for flushing
         // mutator state: https://github.com/mmtk/mmtk-core/issues/1047
+        // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).for_all_mutators)(MutatorClosure::from_rust_closure(&mut |mutator| {
                 mutator.flush();
@@ -40,10 +42,12 @@ impl Collection<Art> for ArtCollection {
     }
 
     fn resume_mutators(tls: VMWorkerThread) {
+        // SAFETY: Assumes upcalls is valid
         unsafe { ((*UPCALLS).resume_mutators)(tls) }
     }
 
     fn block_for_gc(tls: VMMutatorThread) {
+        // SAFETY: Assumes upcalls is valid
         unsafe { ((*UPCALLS).block_for_gc)(tls) }
     }
 
@@ -58,6 +62,7 @@ impl Collection<Art> for ArtCollection {
                 GcThreadKind::Worker,
             ),
         };
+        // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).spawn_gc_thread)(tls, kind, ctx_ptr);
         }

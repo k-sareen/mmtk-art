@@ -34,6 +34,7 @@ impl Scanning<Art> for ArtScanning {
     ) {}
 
     fn scan_vm_specific_roots(_tls: VMWorkerThread, mut factory: impl RootsWorkFactory<ArtEdge>) {
+        // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).scan_all_roots)(to_nodes_closure(&mut factory));
         }
@@ -44,6 +45,7 @@ impl Scanning<Art> for ArtScanning {
         object: ObjectReference,
         edge_visitor: &mut EV,
     ) {
+        // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).scan_object)(
                 object,
@@ -59,6 +61,7 @@ impl Scanning<Art> for ArtScanning {
         let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
         match *current_phase {
             RefProcessingPhase::Phase1 => {
+                // SAFETY: Assumes upcalls is valid
                 unsafe {
                     ((*UPCALLS).process_references)(
                         worker.tls,
@@ -75,6 +78,7 @@ impl Scanning<Art> for ArtScanning {
                 true
             },
             RefProcessingPhase::Phase2 => {
+                // SAFETY: Assumes upcalls is valid
                 unsafe {
                     ((*UPCALLS).process_references)(
                         worker.tls,
@@ -91,6 +95,7 @@ impl Scanning<Art> for ArtScanning {
                 true
             },
             RefProcessingPhase::Phase3 => {
+                // SAFETY: Assumes upcalls is valid
                 unsafe {
                     ((*UPCALLS).process_references)(
                         worker.tls,
@@ -135,7 +140,9 @@ extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
     factory_ptr: *mut libc::c_void,
 ) -> RustBuffer {
     if !ptr.is_null() {
+        // SAFETY: Assumes ptr is valid
         let buf = unsafe { Vec::<ObjectReference>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
+        // SAFETY: Assumes factory_ptr is valid
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
         factory.create_process_pinning_roots_work(buf);
     }
@@ -154,6 +161,7 @@ extern "C" fn scan_object_fn<EV: EdgeVisitor<ArtEdge>>(
     edge: ArtEdge,
     edge_visitor_ptr: *mut libc::c_void
 ) {
+    // SAFETY: Assumes edge_visitor_ptr is valid
     let edge_visitor: &mut EV = unsafe { &mut *(edge_visitor_ptr as *mut EV) };
     edge_visitor.visit_edge(edge);
 }
