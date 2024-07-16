@@ -13,10 +13,8 @@ use mmtk::{
 /// Type of GC worker
 #[repr(C)]
 pub enum GcThreadKind {
-    /// GC Controller Context thread
-    Controller = 0,
     /// Simple GC Worker thread
-    Worker     = 1,
+    Worker = 0,
 }
 
 /// Implements collection trait
@@ -53,10 +51,6 @@ impl Collection<Art> for ArtCollection {
 
     fn spawn_gc_thread(tls: VMThread, ctx: GCThreadContext<Art>) {
         let (ctx_ptr, kind) = match ctx {
-            GCThreadContext::Controller(c) => (
-                Box::into_raw(c) as *mut libc::c_void,
-                GcThreadKind::Controller,
-            ),
             GCThreadContext::Worker(w) => (
                 Box::into_raw(w) as *mut libc::c_void,
                 GcThreadKind::Worker,

@@ -15,7 +15,7 @@ typedef void* MmtkMutator;
 // An opaque pointer to a VMThread
 typedef void* VMThread;
 // Type of GC worker
-enum GcThreadKind { MmtkGcController, MmtkGcWorker };
+enum GcThreadKind { MmtkGcWorker };
 // Allocation semantics
 enum AllocationSemantics {
   AllocatorDefault   = 0,
@@ -212,14 +212,6 @@ bool mmtk_is_object_forwarded(void* object);
  * @return forwarding address of the object
  */
 void* mmtk_get_forwarded_object(void* object);
-
-/**
- * Start the GC Controller thread
- *
- * @param tls the thread that will be used as the GC Controller
- * @param context the context for the GC Controller
- */
-void mmtk_start_gc_controller_thread(void* tls, void* context);
 
 /**
  * Start a GC Worker thread
