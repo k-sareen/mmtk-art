@@ -339,6 +339,12 @@ pub extern "C" fn mmtk_is_emergency_collection() -> bool {
     SINGLETON.is_emergency_collection()
 }
 
+/// Return if current collection is a nursery collection
+#[no_mangle]
+pub extern "C" fn mmtk_is_nursery_collection() -> bool {
+    SINGLETON.is_nursery_collection()
+}
+
 /// Perform a pre-write barrier for a given source, slot, and target. Only call
 /// this before the object has been modified
 #[no_mangle]

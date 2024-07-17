@@ -321,6 +321,14 @@ void mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive)
 bool mmtk_is_emergency_collection();
 
 /**
+ * Return whether the current collection is a nursery collection. This is used
+ * to treat java.lang.ref.Reference objects as strong roots during nursery GCs.
+ *
+ * @return is current collection a nursery collection or not
+ */
+bool mmtk_is_nursery_collection();
+
+/**
  * Perform a pre-write barrier for a given source, slot, and target. Only call
  * this before the object has been modified
  *

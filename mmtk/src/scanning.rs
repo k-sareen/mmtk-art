@@ -58,59 +58,64 @@ impl Scanning<Art> for ArtScanning {
         worker: &mut GCWorker<Art>,
         tracer_context: impl mmtk::vm::ObjectTracerContext<Art>,
     ) -> bool {
-        let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
-        match *current_phase {
-            RefProcessingPhase::Phase1 => {
-                // SAFETY: Assumes upcalls is valid
-                unsafe {
-                    ((*UPCALLS).process_references)(
-                        worker.tls,
-                        TraceObjectClosure::from_rust_closure(&mut |object| {
-                            tracer_context.with_tracer(worker, |tracer| {
-                                tracer.trace_object(object)
-                            })
-                        }),
-                        RefProcessingPhase::Phase1,
-                        crate::api::mmtk_is_emergency_collection(),
-                    );
-                }
-                *current_phase = RefProcessingPhase::Phase2;
-                true
-            },
-            RefProcessingPhase::Phase2 => {
-                // SAFETY: Assumes upcalls is valid
-                unsafe {
-                    ((*UPCALLS).process_references)(
-                        worker.tls,
-                        TraceObjectClosure::from_rust_closure(&mut |object| {
-                            tracer_context.with_tracer(worker, |tracer| {
-                                tracer.trace_object(object)
-                            })
-                        }),
-                        RefProcessingPhase::Phase2,
-                        crate::api::mmtk_is_emergency_collection(),
-                    );
-                }
-                *current_phase = RefProcessingPhase::Phase3;
-                true
-            },
-            RefProcessingPhase::Phase3 => {
-                // SAFETY: Assumes upcalls is valid
-                unsafe {
-                    ((*UPCALLS).process_references)(
-                        worker.tls,
-                        TraceObjectClosure::from_rust_closure(&mut |object| {
-                            tracer_context.with_tracer(worker, |tracer| {
-                                tracer.trace_object(object)
-                            })
-                        }),
-                        RefProcessingPhase::Phase3,
-                        crate::api::mmtk_is_emergency_collection(),
-                    );
-                }
-                *current_phase = RefProcessingPhase::Phase1;
-                false
-            },
+        use crate::SINGLETON;
+        if SINGLETON.is_nursery_collection() {
+            false
+        } else {
+            let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
+            match *current_phase {
+                RefProcessingPhase::Phase1 => {
+                    // SAFETY: Assumes upcalls is valid
+                    unsafe {
+                        ((*UPCALLS).process_references)(
+                            worker.tls,
+                            TraceObjectClosure::from_rust_closure(&mut |object| {
+                                tracer_context.with_tracer(worker, |tracer| {
+                                    tracer.trace_object(object)
+                                })
+                            }),
+                            RefProcessingPhase::Phase1,
+                            crate::api::mmtk_is_emergency_collection(),
+                        );
+                    }
+                    *current_phase = RefProcessingPhase::Phase2;
+                    true
+                },
+                RefProcessingPhase::Phase2 => {
+                    // SAFETY: Assumes upcalls is valid
+                    unsafe {
+                        ((*UPCALLS).process_references)(
+                            worker.tls,
+                            TraceObjectClosure::from_rust_closure(&mut |object| {
+                                tracer_context.with_tracer(worker, |tracer| {
+                                    tracer.trace_object(object)
+                                })
+                            }),
+                            RefProcessingPhase::Phase2,
+                            crate::api::mmtk_is_emergency_collection(),
+                        );
+                    }
+                    *current_phase = RefProcessingPhase::Phase3;
+                    true
+                },
+                RefProcessingPhase::Phase3 => {
+                    // SAFETY: Assumes upcalls is valid
+                    unsafe {
+                        ((*UPCALLS).process_references)(
+                            worker.tls,
+                            TraceObjectClosure::from_rust_closure(&mut |object| {
+                                tracer_context.with_tracer(worker, |tracer| {
+                                    tracer.trace_object(object)
+                                })
+                            }),
+                            RefProcessingPhase::Phase3,
+                            crate::api::mmtk_is_emergency_collection(),
+                        );
+                    }
+                    *current_phase = RefProcessingPhase::Phase1;
+                    false
+                },
+            }
         }
     }
 
