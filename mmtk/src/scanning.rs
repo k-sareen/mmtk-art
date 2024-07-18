@@ -58,8 +58,7 @@ impl Scanning<Art> for ArtScanning {
         worker: &mut GCWorker<Art>,
         tracer_context: impl mmtk::vm::ObjectTracerContext<Art>,
     ) -> bool {
-        use crate::SINGLETON;
-        if SINGLETON.is_nursery_collection() {
+        if crate::api::mmtk_is_nursery_collection() {
             false
         } else {
             let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
