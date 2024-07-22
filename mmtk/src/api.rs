@@ -308,6 +308,12 @@ pub extern "C" fn mmtk_get_used_bytes() -> usize {
     mmtk::memory_manager::used_bytes(&SINGLETON)
 }
 
+/// Get number of GC worker threads
+#[no_mangle]
+pub extern "C" fn mmtk_get_number_of_workers() -> u32 {
+    mmtk::memory_manager::num_of_workers(&SINGLETON)
+}
+
 /// Set the image space address and size to make MMTk aware of the boot image
 #[no_mangle]
 #[allow(mutable_transmutes)]

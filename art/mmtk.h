@@ -165,6 +165,13 @@ size_t mmtk_get_free_bytes();
 size_t mmtk_get_used_bytes();
 
 /**
+ * Get number of GC worker threads
+ *
+ * @return the number of GC worker threads
+ */
+uint32_t mmtk_get_number_of_workers();
+
+/**
  * Set the image space address and size to make MMTk aware of the boot image
  *
  * @param boot_image_start_address the starting address of the boot image
