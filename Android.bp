@@ -26,6 +26,14 @@ rust_ffi_static {
         "liblibc",
         "libmmtk",
     ],
+    target: {
+        android: {
+            rustlibs: [
+                "libandroid_logger", // only on APEX builds
+                "liblog_rust",
+            ],
+        },
+    },
     // "release" build
     // flags: [
     //     "-C lto=true",

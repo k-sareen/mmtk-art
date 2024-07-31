@@ -11,8 +11,11 @@ impl ObjectModel<Art> for ArtObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec = VMLocalForwardingPointerSpec::in_header(32);
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec = VMLocalForwardingBitsSpec::in_header(0);
-    const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = VMLocalLOSMarkNurserySpec::side_first();
-    const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = VMLocalMarkBitSpec::side_after(Self::LOCAL_LOS_MARK_NURSERY_SPEC.as_spec());
+    // XXX(kunals): We don't use the LOCAL_LOS_MARK_NURSERY bits for the time-being. We now use the
+    // LOCAL_MARK_BIT_SPEC for LOS objects as well
+    // const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = VMLocalLOSMarkNurserySpec::side_first();
+    const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = VMLocalMarkBitSpec::side_first();
+    const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec = VMLocalPinningBitSpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
 
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
@@ -23,7 +26,7 @@ impl ObjectModel<Art> for ArtObjectModel {
         copy_context: &mut GCWorkerCopyContext<Art>,
     ) -> ObjectReference {
         let bytes = Self::get_size_when_copied(from);
-        let dst = copy_context.alloc_copy(from, bytes, ::std::mem::size_of::<usize>(), 0, semantics);
+        let dst = copy_context.alloc_copy(from, bytes, Art::MIN_ALIGNMENT, 0, semantics);
         let src = from.to_raw_address();
         // SAFETY: Assumes src and dst are valid
         unsafe { std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), bytes) }

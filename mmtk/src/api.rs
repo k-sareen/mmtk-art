@@ -1,12 +1,18 @@
+#[cfg(target_os = "android")]
+extern crate android_logger;
+
 use crate::{
     Art,
     ArtEdge,
     ArtUpcalls,
     BUILDER,
+    IS_MMTK_INITIALIZED,
     LOG_BYTES_IN_EDGE,
     SINGLETON,
     UPCALLS,
 };
+#[cfg(target_os = "android")]
+use android_logger::Config;
 use mmtk::{
     AllocationSemantics,
     Mutator,
@@ -26,11 +32,48 @@ use std::sync::atomic::Ordering;
 
 /// Initialize MMTk instance
 #[no_mangle]
-pub extern "C" fn mmtk_init(upcalls: *const ArtUpcalls) {
+pub extern "C" fn mmtk_init(
+    upcalls: *const ArtUpcalls,
+    is_zygote_process: bool,
+) {
     // SAFETY: Assumes upcalls is valid
     unsafe { UPCALLS = upcalls };
+    // Set the is_zygote_process option
+    {
+        let mut builder = BUILDER.lock().unwrap();
+        builder.options.is_zygote_process.set(is_zygote_process);
+        debug_assert!(
+            (*builder.options.is_zygote_process) == is_zygote_process,
+            "Was unable to set the is_zygote_process option to {}",
+            is_zygote_process,
+        );
+    }
     // Make sure that we haven't initialized MMTk (by accident) yet
     assert!(!crate::IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
+
+    // Attempt to init a logger for MMTk
+    #[cfg(target_os = "android")]
+    {
+        #[cfg(target_pointer_width = "32")]
+        let tag = "mmtk-art32";
+        #[cfg(target_pointer_width = "64")]
+        let tag = "mmtk-art64";
+        android_logger::init_once(
+            Config::default()
+                .with_max_level(log::LevelFilter::Info)
+                .with_tag(tag),
+        );
+
+        info!(
+            "Initializing MMTk with{} Zygote space",
+            if !is_zygote_process {
+                "out"
+            } else {
+                ""
+            },
+        );
+    }
+
     // Make sure we initialize MMTk here
     lazy_static::initialize(&SINGLETON)
 }
@@ -38,7 +81,8 @@ pub extern "C" fn mmtk_init(upcalls: *const ArtUpcalls) {
 /// Initialize collection for MMTk
 #[no_mangle]
 pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
-    mmtk::memory_manager::initialize_collection(&SINGLETON, tls)
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
+    mmtk::memory_manager::initialize_collection(&SINGLETON, tls);
 }
 
 /// Set the min and max heap size
@@ -61,6 +105,7 @@ pub extern "C" fn mmtk_start_gc_worker_thread(
     tls: VMWorkerThread,
     worker: *mut GCWorker<Art>
 ) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     // SAFETY: Assumes worker is valid
     let worker = unsafe { Box::from_raw(worker) };
     mmtk::memory_manager::start_worker::<Art>(&SINGLETON, tls, worker)
@@ -86,6 +131,7 @@ pub unsafe extern "C" fn mmtk_release_rust_buffer(
 /// Bind a mutator thread in MMTk
 #[no_mangle]
 pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut Mutator<Art> {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     Box::into_raw(mmtk::memory_manager::bind_mutator(&SINGLETON, tls))
 }
 
@@ -93,6 +139,7 @@ pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut Mutator<Art> {
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn mmtk_flush_mutator(mutator: *mut Mutator<Art>) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     // SAFETY: Assumes mutator is valid
     mmtk::memory_manager::flush_mutator(unsafe { &mut *mutator });
 }
@@ -101,6 +148,7 @@ pub extern "C" fn mmtk_flush_mutator(mutator: *mut Mutator<Art>) {
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<Art>) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     // SAFETY: Assumes mutator is valid
     mmtk::memory_manager::destroy_mutator(unsafe { &mut *mutator });
 }
@@ -115,6 +163,7 @@ pub extern "C" fn mmtk_alloc(
     offset: usize,
     allocator: AllocationSemantics,
 ) -> Address {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     mmtk::memory_manager::alloc::<Art>(
         // SAFETY: Assumes mutator is valid
         unsafe { &mut *mutator },
@@ -134,6 +183,7 @@ pub extern "C" fn mmtk_post_alloc(
     size: usize,
     allocator: AllocationSemantics,
 ) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     mmtk::memory_manager::post_alloc::<Art>(
         // SAFETY: Assumes mutator is valid
         unsafe { &mut *mutator },
@@ -151,6 +201,7 @@ pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
     mutator: *mut Mutator<Art>,
     bump_pointer: BumpPointer
 ) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     let selector = mmtk::memory_manager::get_allocator_mapping(
         &SINGLETON,
         AllocationSemantics::Default,
@@ -199,6 +250,7 @@ pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
 pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
     mutator: *mut Mutator<Art>
 ) -> BumpPointer {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     let selector = mmtk::memory_manager::get_allocator_mapping(
         &SINGLETON,
         AllocationSemantics::Default,
@@ -278,6 +330,18 @@ pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> ObjectRe
     }
 }
 
+/// Pin the object so it does not move during GCs
+#[no_mangle]
+pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
+    mmtk::memory_manager::pin_object::<Art>(object)
+}
+
+/// Check if an object has been pinned or not
+#[no_mangle]
+pub extern "C" fn mmtk_is_object_pinned(object: ObjectReference) -> bool {
+    mmtk::memory_manager::is_pinned::<Art>(object)
+}
+
 /// Get starting heap address
 #[no_mangle]
 pub extern "C" fn mmtk_get_heap_start() -> Address {
@@ -311,13 +375,14 @@ pub extern "C" fn mmtk_get_used_bytes() -> usize {
 /// Get number of GC worker threads
 #[no_mangle]
 pub extern "C" fn mmtk_get_number_of_workers() -> u32 {
-    mmtk::memory_manager::num_of_workers(&SINGLETON)
+    mmtk::memory_manager::num_of_workers(&SINGLETON) as u32
 }
 
 /// Set the image space address and size to make MMTk aware of the boot image
 #[no_mangle]
 #[allow(mutable_transmutes)]
 pub extern "C" fn mmtk_set_image_space(boot_image_start_address: Address, boot_image_size: usize) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     let mmtk: &mmtk::MMTK<Art> = &SINGLETON;
     // SAFETY: Assumes mmtk is valid
     let mmtk_mut: &mut mmtk::MMTK<Art> = unsafe { std::mem::transmute(mmtk) };
@@ -331,12 +396,31 @@ pub extern "C" fn mmtk_handle_user_collection_request(
     force: bool,
     exhaustive: bool
 ) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     mmtk::memory_manager::handle_user_collection_request(
         &SINGLETON,
         tls,
         force,
         exhaustive
     )
+}
+
+/// Request full-heap GC to occur before forking the Zygote for the first time.
+/// This GC should try to compact the Zygote space as much as possible.
+#[no_mangle]
+pub extern "C" fn mmtk_handle_pre_first_zygote_fork_collection_request(tls: VMMutatorThread) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
+    mmtk::memory_manager::handle_pre_first_zygote_fork_collection_request(
+        &SINGLETON,
+        tls,
+    );
+
+    // SAFETY: Assumes upcalls is valid
+    unsafe {
+        ((*UPCALLS).set_has_zygote_space_in_art)(
+            SINGLETON.has_zygote_space(),
+        )
+    }
 }
 
 /// Return if current collection is an emergency collection
@@ -423,6 +507,26 @@ pub extern "C" fn mmtk_array_copy_post(
             .barrier()
             .memory_region_copy_post((src..src + bytes).into(), (dst..dst + bytes).into());
     }
+}
+
+/// Inform MMTk if the current runtime is the Zygote process or not
+#[no_mangle]
+pub extern "C" fn mmtk_set_is_zygote_process(is_zygote_process: bool) {
+    SINGLETON.set_is_zygote_process(is_zygote_process);
+}
+
+/// Hook called before the Zygote is forked. We stop GC worker threads and save
+/// their context here
+#[no_mangle]
+pub extern "C" fn mmtk_pre_zygote_fork() {
+    SINGLETON.prepare_to_fork();
+}
+
+/// Hook called after the Zygote has been forked. We respawn GC worker threads
+/// here
+#[no_mangle]
+pub extern "C" fn mmtk_post_zygote_fork(tls: VMThread) {
+    SINGLETON.after_fork(tls);
 }
 
 /// Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC

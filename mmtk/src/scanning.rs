@@ -59,6 +59,10 @@ impl Scanning<Art> for ArtScanning {
         tracer_context: impl mmtk::vm::ObjectTracerContext<Art>,
     ) -> bool {
         if crate::api::mmtk_is_nursery_collection() {
+            // We need to sweep system weaks after a nursery GC as well to avoid having broken
+            // objects inside intern tables (for example) when we sweep system weaks in a global GC
+            // SAFETY: Assumes upcalls is valid
+            unsafe { ((*UPCALLS).sweep_system_weaks)() };
             false
         } else {
             let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();

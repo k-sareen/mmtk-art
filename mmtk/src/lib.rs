@@ -2,6 +2,9 @@
 
 #[macro_use]
 extern crate lazy_static;
+#[cfg(target_os = "android")]
+#[macro_use]
+extern crate log;
 
 use crate::{
     active_plan::ArtActivePlan,
@@ -310,6 +313,8 @@ pub struct ArtUpcalls {
     ),
     /// Sweep system weaks in ART
     pub sweep_system_weaks: extern "C" fn(),
+    /// Set ThirdPartyHeap::has_zygote_space_ inside ART
+    pub set_has_zygote_space_in_art: extern "C" fn(has_zygote_space: bool),
 }
 
 /// Global static instance of upcalls

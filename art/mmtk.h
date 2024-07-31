@@ -105,14 +105,16 @@ typedef struct {
     bool clear_soft_references
   );
   void (*sweep_system_weaks) ();
+  void (*set_has_zygote_space_in_art) (bool has_zygote_space);
 } ArtUpcalls;
 
 /**
  * Initialize MMTk instance
  *
  * @param upcalls the set of ART upcalls used by MMTk
+ * @param is_zygote_process is the current runtime the Zygote process?
  */
-void mmtk_init(ArtUpcalls* upcalls);
+void mmtk_init(ArtUpcalls* upcalls, bool is_zygote_process);
 
 /**
  * Initialize collection for MMTk
@@ -221,6 +223,22 @@ bool mmtk_is_object_forwarded(void* object);
 void* mmtk_get_forwarded_object(void* object);
 
 /**
+ * Pin the object so it does not move during GCs
+ *
+ * @param object address of the object
+ * @return if the object was pinned or not
+ */
+bool mmtk_pin_object(void* object);
+
+/**
+ * Check if an object has been pinned or not
+ *
+ * @param object address of the object
+ * @return if the object is pinned or not
+ */
+bool mmtk_is_object_pinned(void* object);
+
+/**
  * Start a GC Worker thread
  *
  * @param tls the thread that will be used as the GC Worker
@@ -319,6 +337,14 @@ MmtkBumpPointer mmtk_get_default_thread_local_cursor_limit(MmtkMutator mutator);
 void mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive);
 
 /**
+ * Request full-heap GC to occur before forking the Zygote for the first time.
+ * This GC will try to compact the Zygote space as much as possible.
+ *
+ * @param tls pointer to the mutator thread requesting GC
+ */
+void mmtk_handle_pre_first_zygote_fork_collection_request(void* tls);
+
+/**
  * Return whether the current collection is an emergency collection. This is
  * used for clearing soft references, we only need to clean soft references if
  * we are under heap stress.
@@ -382,6 +408,27 @@ void mmtk_array_copy_pre(MmtkMutator mutator, void* src,
  */
 void mmtk_array_copy_post(MmtkMutator mutator, void* src,
         void* dst, size_t count);
+
+/**
+ * Inform MMTk if the current runtime is the Zygote process or not
+ *
+ * @param is_zygote_process is the current runtime the Zygote process?
+ */
+void mmtk_set_is_zygote_process(bool is_zygote_process);
+
+/**
+ * Hook called before the Zygote is forked. We stop GC worker threads and save
+ * their context here
+ */
+void mmtk_pre_zygote_fork();
+
+/**
+ * Hook called after the Zygote has been forked. We respawn GC worker threads
+ * here
+ *
+ * @param tls reference to the calling VMThread
+ */
+void mmtk_post_zygote_fork(VMThread tls);
 
 /**
  * Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC
