@@ -30,13 +30,16 @@ TODO(kunals): manifest.xml
 #### Building Headless ART
 
 Set up the environment and build target.
-If you want a release/performance build set the `VARIANT` environment variable to `userdebug` or `user`.
 ```shell
 $ source build/envsetup.sh
 $ export VARIANT="eng"
 $ lunch silvermont-trunk_staging-${VARIANT}  # For Linux host builds
 $ lunch armv8-trunk_staging-${VARIANT}       # For device target builds
 ```
+
+If you want a release/performance build set the `VARIANT` environment variable to `userdebug` or `user`.
+
+> **Note:** If you want MMTk to build in release mode as well, then you will have to comment out the debug build flags in `mmtk-core/Android.bp` and uncomment the release build flags in `mmtk-core/Android.bp` as well as `mmtk-art/Android.bp`.
 
 To build MMTk ART with `Immix`:
 ```shell
@@ -52,12 +55,12 @@ $ RUST_BACKTRACE=1 ART_USE_MMTK=true ART_USE_READ_BARRIER=false ART_USE_WRITE_BA
 #### Building ART APEX
 
 Set up the environment and build target.
-If you want a release/performance build set the `VARIANT` environment variable to `userdebug` or `user`.
 ```shell
 $ source build/envsetup.sh
 $ export VARIANT="eng"
 $ banchan com.android.art ${VARIANT} x86_64    # For x86_64 target builds
 ```
+See [above](#building-headless-art) if you want a release/performance build.
 
 To build MMTk ART with `Immix` (note this is not thoroughly tested):
 ```shell
