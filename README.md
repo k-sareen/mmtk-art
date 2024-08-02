@@ -23,7 +23,16 @@ We can boot an AOSP build on an x86_64 Cuttlefish VM with the `StickyImmix` plan
 
 ### Setting up
 
-TODO(kunals): manifest.xml
+Since we had to add/change repositories to get MMTk to build with ART, we maintain our own `repo` manifest file.
+It is based off the `master-art` manifest file.
+We lock all versions of dependencies to ensure we can always build MMTk.
+The ART fork is based on commit [`451cfcf9d09515ef60d76bd8551fc68c6e3bf621`](https://android.googlesource.com/platform/art/+/451cfcf9d09515ef60d76bd8551fc68c6e3bf621).
+
+```shell
+$ mkdir android-mmtk
+$ cd android-mmtk
+$ repo init -u https://github.com/k-sareen/mmtk-art-manifest -b mmtk-art
+```
 
 ### Building
 
@@ -33,7 +42,10 @@ Set up the environment and build target.
 ```shell
 $ source build/envsetup.sh
 $ export VARIANT="eng"
-$ lunch silvermont-trunk_staging-${VARIANT}  # For Linux host builds
+$ lunch silvermont-trunk_staging-${VARIANT}  # For Linux x86_64 host builds
+```
+OR for aarch64 device target:
+```shell
 $ lunch armv8-trunk_staging-${VARIANT}       # For device target builds
 ```
 
