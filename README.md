@@ -129,6 +129,9 @@ The `StickyImmix` plan is only supported for x86_64 as the write barriers have n
 
 Currently we disable SELinux for the Cuttlefish VM at boot to avoid issues when trying to read `/proc` files.
 
+We've temporarily disabled loading app images at run-time since we currently do not have a way to remove image spaces inside MMTk.
+Once we have this functionality, we will enable this feature and register app images with MMTk.
+
 The port has not been performance tuned at all.
 For example, currently the write barrier is a full call into MMTk even for the fast-path.
 
