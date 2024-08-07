@@ -16,6 +16,7 @@ We can run headless ART builds both on target and host and for both x86_64 and a
 We have allocation fast-paths implemented for all architectures.
 
 We can boot an AOSP build on an x86_64 Cuttlefish VM with the `Immix` and `StickyImmix` plans.
+We can boot an AOSP build on an actual arm64 device with the `Immix` plan.
 
 [^1]: Namely, ART expects a root visitor to process the root immediately while MMTk expects a list of root slots to seed the transitive closure.
 
@@ -71,6 +72,10 @@ $ source build/envsetup.sh
 $ export VARIANT="eng"
 $ banchan com.android.art ${VARIANT} x86_64    # For x86_64 target builds
 ```
+OR for aarch64 device target:
+```shell
+$ banchan com.android.art ${VARIANT} arm64     # For arm64 target builds
+```
 See [above](#building-headless-art) if you want a release/performance build.
 
 To build MMTk ART with `Immix`:
@@ -91,13 +96,11 @@ We use Cuttlefish images from [this Android CI build](https://ci.android.com/bui
 
 We run the Cuttlefish VM like so:
 ```shell
-$ HOME=$PWD taskset -c 0-3 ./bin/launch_cvd -report_anonymous_usage_stats=n --daemon --gpu_mode=guest_swiftshader -vm_manager=qemu_cli -guest_enforce_security=false -cpus=4
+$ HOME=$PWD taskset -c 0-3 ./bin/launch_cvd -report_anonymous_usage_stats=n --daemon --gpu_mode=guest_swiftshader -vm_manager=qemu_cli -cpus=4
 ```
 
 QEMU was used since `crosvm` was crashing on our development machines.
 It is likely MMTk works with `crosvm` but it is untested.
-
-We disable SELinux due to reasons mentioned [below](#known-limitations).
 
 Install ART with `adb` like so:
 ```shell
@@ -126,8 +129,6 @@ $ adb logcat | grep "mmtk-art"
 
 The `StickyImmix` plan is only supported for x86_64 as the write barriers have not been implemented for any other platform.
 
-Currently we disable SELinux for the Cuttlefish VM at boot to avoid issues when trying to read `/proc` files.
-
 We've temporarily disabled loading app images at run-time since we currently do not have a way to remove image spaces inside MMTk.
 Once we have this functionality, we will enable this feature and register app images with MMTk.
 
@@ -135,3 +136,5 @@ The port has not been performance tuned at all.
 For example, currently the write barrier is a full call into MMTk even for the fast-path.
 
 There are also major features missing from MMTk currently such as the ability to return free pages back to the operating system, which is obviously a key requirement for mobile devices.
+MMTk can also be brittle as it currently does not deal with `mmap` failures.
+These `mmap` failures can arise from the JIT-compiler allocating JIT-ted code into MMTk's address space.
