@@ -32,6 +32,18 @@ enum RefProcessingPhase {
   Phase2 = 1,
   Phase3 = 2,
 };
+// Plan selector
+enum MmtkPlanSelector {
+  NoGC        = 0,
+  SemiSpace   = 1,
+  GenCopy     = 2,
+  GenImmix    = 3,
+  MarkSweep   = 4,
+  PageProtect = 5,
+  Immix       = 6,
+  MarkCompact = 7,
+  StickyImmix = 8,
+};
 
 // A representation of an MMTk bump pointer for embedding in the mutator's TLS
 typedef struct {
@@ -112,9 +124,10 @@ typedef struct {
  * Initialize MMTk instance
  *
  * @param upcalls the set of ART upcalls used by MMTk
+ * @param plan what MMTk plan to use
  * @param is_zygote_process is the current runtime the Zygote process?
  */
-void mmtk_init(ArtUpcalls* upcalls, bool is_zygote_process);
+void mmtk_init(ArtUpcalls* upcalls, MmtkPlanSelector plan, bool is_zygote_process);
 
 /**
  * Initialize collection for MMTk
