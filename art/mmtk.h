@@ -145,6 +145,14 @@ void mmtk_initialize_collection(VMThread tls);
 void mmtk_set_heap_size(size_t min, size_t max);
 
 /**
+ * Clamp the max heap size for target application
+ *
+ * @param max maximum heap size (in bytes)
+ * @return if the max heap size was clamped
+ */
+bool mmtk_clamp_max_heap_size(size_t max);
+
+/**
  * Get the heap start
  *
  * @return the starting heap address

@@ -105,6 +105,17 @@ pub extern "C" fn mmtk_set_heap_size(min: usize, max: usize) -> bool {
     builder.options.gc_trigger.set(policy)
 }
 
+/// Clamp the max heap size for target application. Return if the max heap size was clamped
+#[no_mangle]
+#[allow(mutable_transmutes)]
+pub extern "C" fn mmtk_clamp_max_heap_size(max: usize) -> bool {
+    let mmtk: &mmtk::MMTK<Art> = &SINGLETON;
+    // XXX(kunals): This is incredibly unsafe as others may have access to MMTk at the same time
+    // SAFETY: Assumes mmtk is valid and we are the only one accessing it
+    let mmtk_mut: &mut mmtk::MMTK<Art> = unsafe { std::mem::transmute(mmtk) };
+    mmtk_mut.clamp_max_heap_size(max)
+}
+
 /// Start a GC Worker thread. We trust the `worker` pointer is valid
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
