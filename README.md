@@ -15,7 +15,7 @@ We can run headless ART builds both on target and host and for both x86_64 and a
 
 We have allocation fast-paths implemented for all architectures.
 
-We can boot an AOSP build on an x86_64 Cuttlefish VM with the `StickyImmix` plan.
+We can boot an AOSP build on an x86_64 Cuttlefish VM with the `Immix` and `StickyImmix` plans.
 
 [^1]: Namely, ART expects a root visitor to process the root immediately while MMTk expects a list of root slots to seed the transitive closure.
 
@@ -57,7 +57,6 @@ To build MMTk ART with `Immix`:
 ```shell
 $ RUST_BACKTRACE=1 ART_USE_MMTK=true ART_USE_READ_BARRIER=false ART_USE_WRITE_BARRIER=false ART_DEFAULT_GC_TYPE=SS ./art/tools/buildbot-build.sh --{host,target} --installclean --skip-run-tests-build
 ```
-Note you may have to change the default GC inside MMTk core to select `Immix` by default.
 
 To build MMTk ART with `StickyImmix`:
 ```shell
@@ -74,7 +73,7 @@ $ banchan com.android.art ${VARIANT} x86_64    # For x86_64 target builds
 ```
 See [above](#building-headless-art) if you want a release/performance build.
 
-To build MMTk ART with `Immix` (note this is not thoroughly tested):
+To build MMTk ART with `Immix`:
 ```shell
 $ RUST_BACKTRACE=1 ART_USE_MMTK=1 ART_USE_READ_BARRIER=false ART_USE_WRITE_BARRIER=false ART_DEFAULT_GC_TYPE=SS m apps_only dist
 ```
