@@ -452,6 +452,11 @@ void mmtk_pre_zygote_fork();
 void mmtk_post_zygote_fork(VMThread tls);
 
 /**
+ * Tell MMTk to create perf counters for this process
+ */
+void mmtk_create_perf_counters();
+
+/**
  * Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC
  * and then enable collecting statistics inside MMTk.
  *

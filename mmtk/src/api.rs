@@ -547,6 +547,12 @@ pub extern "C" fn mmtk_post_zygote_fork(tls: VMThread) {
     SINGLETON.after_fork(tls);
 }
 
+/// Tell MMTk to create perf counters for this process
+#[no_mangle]
+pub extern "C" fn mmtk_create_perf_counters() {
+    SINGLETON.create_perf_counters();
+}
+
 /// Generic hook to allow benchmarks to be harnessed. We perform a full-heap GC
 /// and then enable collecting statistics inside MMTk
 #[no_mangle]
