@@ -44,6 +44,11 @@ enum MmtkPlanSelector {
   MarkCompact = 7,
   StickyImmix = 8,
 };
+// Allocation error
+enum MmtkAllocationError {
+  HeapOOM = 0,
+  MmapOOM = 1,
+};
 
 // A representation of an MMTk bump pointer for embedding in the mutator's TLS
 typedef struct {
@@ -118,6 +123,7 @@ typedef struct {
   );
   void (*sweep_system_weaks) ();
   void (*set_has_zygote_space_in_art) (bool has_zygote_space);
+  void (*throw_out_of_memory) (void* tls, MmtkAllocationError err_kind);
 } ArtUpcalls;
 
 /**

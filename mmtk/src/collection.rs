@@ -4,10 +4,17 @@ use crate::{
     UPCALLS,
 };
 use mmtk::{
+    util::{
+        alloc::AllocationError,
+        opaque_pointer::*,
+    },
+    vm::{
+        ActivePlan,
+        Collection,
+        GCThreadContext,
+    },
     Mutator,
     MutatorContext,
-    util::opaque_pointer::*,
-    vm::{Collection, GCThreadContext},
 };
 
 /// Type of GC worker
@@ -59,6 +66,18 @@ impl Collection<Art> for ArtCollection {
         // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).spawn_gc_thread)(tls, kind, ctx_ptr);
+        }
+    }
+
+    fn out_of_memory(tls: VMThread, err_kind: AllocationError) {
+        assert!(
+            <Art as mmtk::vm::VMBinding>::VMActivePlan::is_mutator(tls),
+            "Cannot call out_of_memory for non-mutator thread {:?}!",
+            tls,
+        );
+        // SAFETY: Assumes upcalls is valid
+        unsafe {
+            ((*UPCALLS).throw_out_of_memory_error)(tls, err_kind);
         }
     }
 }

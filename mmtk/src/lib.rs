@@ -17,12 +17,8 @@ use crate::{
     scanning::ArtScanning,
 };
 use mmtk::{
-    MMTK,
-    MMTKBuilder,
-    Mutator,
     util::{
-        Address,
-        ObjectReference,
+        alloc::AllocationError,
         conversions::{
             chunk_align_down,
             chunk_align_up,
@@ -32,6 +28,8 @@ use mmtk::{
             VMLayout,
         },
         opaque_pointer::*,
+        Address,
+        ObjectReference,
     },
     vm::{
         edge_shape::{
@@ -40,6 +38,9 @@ use mmtk::{
         },
         VMBinding,
     },
+    MMTK,
+    MMTKBuilder,
+    Mutator,
 };
 use std::{
     ops::Range,
@@ -315,6 +316,8 @@ pub struct ArtUpcalls {
     pub sweep_system_weaks: extern "C" fn(),
     /// Set ThirdPartyHeap::has_zygote_space_ inside ART
     pub set_has_zygote_space_in_art: extern "C" fn(has_zygote_space: bool),
+    /// Throw out of memory error caused by `err_kind` for thread `self`
+    pub throw_out_of_memory_error: extern "C" fn(tls: VMThread, err_kind: AllocationError),
 }
 
 /// Global static instance of upcalls
