@@ -51,7 +51,6 @@ rust_ffi_static {
     // flags: [
     //     "-C lto=true",
     //     "-C linker-plugin-lto=true",
-    //     "-C embed-bitcode=true",
     // ],
     apex_available: [
         "//apex_available:platform",
