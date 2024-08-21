@@ -4,6 +4,7 @@ use crate::{
     NodesClosure,
     RustBuffer,
     ScanObjectClosure,
+    SlotsClosure,
     TraceObjectClosure,
     UPCALLS,
     RefProcessingPhase,
@@ -36,7 +37,7 @@ impl Scanning<Art> for ArtScanning {
     fn scan_vm_specific_roots(_tls: VMWorkerThread, mut factory: impl RootsWorkFactory<ArtEdge>) {
         // SAFETY: Assumes upcalls is valid
         unsafe {
-            ((*UPCALLS).scan_all_roots)(to_nodes_closure(&mut factory));
+            ((*UPCALLS).scan_all_roots)(to_slots_closure(&mut factory));
         }
     }
 
@@ -141,6 +142,7 @@ const WORK_PACKET_CAPACITY: usize = 4096;
 /// Create a buffer of size `length` and capacity `capacity`. This buffer is
 /// used for reporting nodes to MMTk. The C++ code should store nodes in the
 /// buffer carefully to avoid segfaulting.
+#[allow(unused)]
 extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
     ptr: *mut Address,
     length: usize,
@@ -164,6 +166,32 @@ extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
     RustBuffer { ptr, capacity }
 }
 
+/// Create a buffer of size `length` and capacity `capacity`. This buffer is
+/// used for reporting slots to MMTk. The C++ code should store slots in the
+/// buffer carefully to avoid segfaulting.
+extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
+    ptr: *mut Address,
+    length: usize,
+    capacity: usize,
+    factory_ptr: *mut libc::c_void,
+) -> RustBuffer {
+    if !ptr.is_null() {
+        // SAFETY: Assumes ptr is valid
+        let buf = unsafe { Vec::<ArtEdge>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
+        // SAFETY: Assumes factory_ptr is valid
+        let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
+        factory.create_process_edge_roots_work(buf);
+    }
+    let (ptr, _, capacity) = {
+        // TODO: Use Vec::into_raw_parts() when the method is available.
+        use std::mem::ManuallyDrop;
+        let new_vec = Vec::with_capacity(WORK_PACKET_CAPACITY);
+        let mut me = ManuallyDrop::new(new_vec);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    };
+    RustBuffer { ptr, capacity }
+}
+
 /// Function that allows C/C++ code to invoke a `ScanObjectClosure` closure
 extern "C" fn scan_object_fn<EV: EdgeVisitor<ArtEdge>>(
     edge: ArtEdge,
@@ -175,11 +203,22 @@ extern "C" fn scan_object_fn<EV: EdgeVisitor<ArtEdge>>(
 }
 
 /// Convert a `RootsWorkFactory` into a `NodesClosure`
+#[allow(unused)]
 pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtEdge>>(
     factory: &mut F
 ) -> NodesClosure {
     NodesClosure {
         func: report_nodes_and_renew_buffer::<F>,
+        data: factory as *mut F as *mut libc::c_void,
+    }
+}
+
+/// Convert a `RootsWorkFactory` into a `SlotsClosure`
+pub(crate) fn to_slots_closure<F: RootsWorkFactory<ArtEdge>>(
+    factory: &mut F
+) -> SlotsClosure {
+    SlotsClosure {
+        func: report_slots_and_renew_buffer::<F>,
         data: factory as *mut F as *mut libc::c_void,
     }
 }

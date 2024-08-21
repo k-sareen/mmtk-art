@@ -82,6 +82,16 @@ struct NodesClosure {
   }
 };
 
+// A closure used for reporting root slots back to MMTk
+struct SlotsClosure {
+  RustBuffer (*func)(Address* buf, size_t size, size_t capacity, void* data);
+  void* data;
+
+  RustBuffer invoke(Address* buf, size_t size, size_t capacity) {
+    return func(buf, size, capacity, data);
+  }
+};
+
 // A closure used to scan an object for references
 struct ScanObjectClosure {
   void (*func)(void* edge, void* data);
@@ -114,7 +124,7 @@ typedef struct {
   bool (*is_mutator) (void* tls);
   MmtkMutator (*get_mmtk_mutator) (void* tls);
   void (*for_all_mutators) (MutatorClosure closure);
-  void (*scan_all_roots) (NodesClosure closure);
+  void (*scan_all_roots) (SlotsClosure closure);
   void (*process_references) (
     void* tls,
     TraceObjectClosure closure,

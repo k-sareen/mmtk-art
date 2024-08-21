@@ -303,8 +303,8 @@ pub struct ArtUpcalls {
     pub get_mmtk_mutator: extern "C" fn(tls: VMMutatorThread) -> *mut Mutator<Art>,
     /// Evaluate given closure for each mutator thread
     pub for_all_mutators: extern "C" fn(closure: MutatorClosure),
-    /// Scan all VM roots and report nodes to MMTk
-    pub scan_all_roots: extern "C" fn(closure: NodesClosure),
+    /// Scan all VM roots and report slots to MMTk
+    pub scan_all_roots: extern "C" fn(closure: SlotsClosure),
     /// Process weak references
     pub process_references: extern "C" fn(
         tls: VMWorkerThread,
@@ -369,6 +369,20 @@ pub struct RustBuffer {
 /// A closure for reporting root nodes. The C++ code should pass `data` back as the last argument.
 #[repr(C)]
 pub struct NodesClosure {
+    /// The closure to invoke
+    pub func: extern "C" fn(
+        buf: *mut Address,
+        size: usize,
+        cap: usize,
+        data: *mut libc::c_void,
+    ) -> RustBuffer,
+    /// The Rust context associated with the closure
+    pub data: *const libc::c_void,
+}
+
+/// A closure for reporting root slots. The C++ code should pass `data` back as the last argument.
+#[repr(C)]
+pub struct SlotsClosure {
     /// The closure to invoke
     pub func: extern "C" fn(
         buf: *mut Address,
