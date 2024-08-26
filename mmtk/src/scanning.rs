@@ -156,14 +156,14 @@ extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
         factory.create_process_pinning_roots_work(buf);
     }
-    let (ptr, _, capacity) = {
+    let (ptr, len, capacity) = {
         // TODO: Use Vec::into_raw_parts() when the method is available.
         use std::mem::ManuallyDrop;
         let new_vec = Vec::with_capacity(WORK_PACKET_CAPACITY);
         let mut me = ManuallyDrop::new(new_vec);
         (me.as_mut_ptr(), me.len(), me.capacity())
     };
-    RustBuffer { ptr, capacity }
+    RustBuffer { ptr, len, capacity }
 }
 
 /// Create a buffer of size `length` and capacity `capacity`. This buffer is
@@ -182,14 +182,14 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
         factory.create_process_edge_roots_work(buf);
     }
-    let (ptr, _, capacity) = {
+    let (ptr, len, capacity) = {
         // TODO: Use Vec::into_raw_parts() when the method is available.
         use std::mem::ManuallyDrop;
         let new_vec = Vec::with_capacity(WORK_PACKET_CAPACITY);
         let mut me = ManuallyDrop::new(new_vec);
         (me.as_mut_ptr(), me.len(), me.capacity())
     };
-    RustBuffer { ptr, capacity }
+    RustBuffer { ptr, len, capacity }
 }
 
 /// Function that allows C/C++ code to invoke a `ScanObjectClosure` closure

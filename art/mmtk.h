@@ -59,8 +59,29 @@ typedef struct {
 // A representation of a Rust buffer
 typedef struct {
   Address* buf;
+  size_t len;
   size_t capacity;
 } RustBuffer;
+
+// A representation of a Rust buffer of ObjectReference
+typedef struct {
+  void** buf;
+  size_t len;
+  size_t capacity;
+} RustObjectReferenceBuffer;
+
+// A representation of an allocated region in MMTk
+typedef struct {
+  Address start;
+  size_t size;
+} AllocatedRegion;
+
+// A representation of a Rust buffer of (Address, size)
+typedef struct {
+  AllocatedRegion* buf;
+  size_t len;
+  size_t capacity;
+} RustAllocatedRegionBuffer;
 
 // A closure that operates on MmtkMutators
 struct MutatorClosure {
@@ -212,6 +233,20 @@ size_t mmtk_get_used_bytes();
 uint32_t mmtk_get_number_of_workers();
 
 /**
+ * Iterate through all the allocated regions in MMTk
+ *
+ * @return a Rust `Vec` with allocated regions returned as (start_address, size)
+ */
+RustAllocatedRegionBuffer mmtk_iterate_allocated_regions();
+
+/**
+ * Enumerate all the large objects allocated in MMTk
+ *
+ * @return a Rust `Vec` with large objects allocated in MMTk
+ */
+RustObjectReferenceBuffer mmtk_enumerate_large_objects();
+
+/**
  * Set the image space address and size to make MMTk aware of the boot image
  *
  * @param boot_image_start_address the starting address of the boot image
@@ -293,6 +328,28 @@ void mmtk_start_gc_worker_thread(void* tls, void* context);
  * @param capacity the maximum capacity of the buffer
  */
 void mmtk_release_rust_buffer(void** buffer, size_t length, size_t capacity);
+
+/**
+ * Release a RustAllocatedRegionBuffer by dropping it. It is the caller's
+ * responsibility to ensure that @param buffer points to a valid
+ * RustAllocatedRegionBuffer.
+ *
+ * @param buffer the address of the buffer
+ * @param length the number of items in the buffer
+ * @param capacity the maximum capacity of the buffer
+ */
+void mmtk_release_rust_allocated_region_buffer(AllocatedRegion* buffer, size_t length, size_t capacity);
+
+/**
+ * Release a RustObjectReferenceBuffer by dropping it. It is the caller's
+ * responsibility to ensure that @param buffer points to a valid
+ * RustObjectReferenceBuffer.
+ *
+ * @param buffer the address of the buffer
+ * @param length the number of items in the buffer
+ * @param capacity the maximum capacity of the buffer
+ */
+void mmtk_release_rust_object_reference_buffer(void** buffer, size_t length, size_t capacity);
 
 /**
  * Allocation

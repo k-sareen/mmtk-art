@@ -8,6 +8,8 @@ use crate::{
     BUILDER,
     IS_MMTK_INITIALIZED,
     LOG_BYTES_IN_EDGE,
+    RustAllocatedRegionBuffer,
+    RustObjectReferenceBuffer,
     SINGLETON,
     UPCALLS,
 };
@@ -105,6 +107,32 @@ pub extern "C" fn mmtk_set_heap_size(min: usize, max: usize) -> bool {
     builder.options.gc_trigger.set(policy)
 }
 
+/// Iterate through all the allocated regions in MMTk
+#[no_mangle]
+pub extern "C" fn mmtk_iterate_allocated_regions() -> RustAllocatedRegionBuffer {
+    let regions = SINGLETON.iterate_allocated_regions();
+    let (ptr, len, capacity) = {
+        // TODO: Use Vec::into_raw_parts() when the method is available.
+        use std::mem::ManuallyDrop;
+        let mut me = ManuallyDrop::new(regions);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    };
+    RustAllocatedRegionBuffer { ptr, len, capacity }
+}
+
+/// Enumerate all the large objects allocated in MMTk
+#[no_mangle]
+pub extern "C" fn mmtk_enumerate_large_objects() -> RustObjectReferenceBuffer {
+    let objects = SINGLETON.enumerate_large_objects();
+    let (ptr, len, capacity) = {
+        // TODO: Use Vec::into_raw_parts() when the method is available.
+        use std::mem::ManuallyDrop;
+        let mut me = ManuallyDrop::new(objects);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    };
+    RustObjectReferenceBuffer { ptr, len, capacity }
+}
+
 /// Clamp the max heap size for target application. Return if the max heap size was clamped
 #[no_mangle]
 #[allow(mutable_transmutes)]
@@ -142,6 +170,40 @@ pub unsafe extern "C" fn mmtk_release_rust_buffer(
     // SAFETY: Assumes ptr is valid
     unsafe {
         let vec = Vec::<Address>::from_raw_parts(ptr, length, capacity);
+        drop(vec);
+    }
+}
+
+/// Release a RustAllocatedRegionBuffer by dropping it
+///
+/// # Safety
+/// Caller needs to make sure the `ptr` is a valid vector pointer.
+#[no_mangle]
+pub unsafe extern "C" fn mmtk_release_rust_allocated_region_buffer(
+    ptr: *mut (Address, usize),
+    length: usize,
+    capacity: usize,
+) {
+    // SAFETY: Assumes ptr is valid
+    unsafe {
+        let vec = Vec::<(Address, usize)>::from_raw_parts(ptr, length, capacity);
+        drop(vec);
+    }
+}
+
+/// Release a RustObjectReferenceBuffer by dropping it
+///
+/// # Safety
+/// Caller needs to make sure the `ptr` is a valid vector pointer.
+#[no_mangle]
+pub unsafe extern "C" fn mmtk_release_rust_object_reference_buffer(
+    ptr: *mut ObjectReference,
+    length: usize,
+    capacity: usize,
+) {
+    // SAFETY: Assumes ptr is valid
+    unsafe {
+        let vec = Vec::<ObjectReference>::from_raw_parts(ptr, length, capacity);
         drop(vec);
     }
 }

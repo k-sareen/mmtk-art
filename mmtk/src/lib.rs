@@ -364,6 +364,30 @@ impl MutatorClosure {
 pub struct RustBuffer {
     /// The start address of the buffer
     pub ptr: *mut Address,
+    /// The length of the Rust buffer
+    pub len: usize,
+    /// The capacity of the buffer
+    pub capacity: usize,
+}
+
+/// A representation of a Rust buffer of ObjectReference
+#[repr(C)]
+pub struct RustObjectReferenceBuffer {
+    /// The start address of the buffer
+    pub ptr: *mut ObjectReference,
+    /// The length of the Rust buffer
+    pub len: usize,
+    /// The capacity of the buffer
+    pub capacity: usize,
+}
+
+/// A representation of a Rust buffer of (Address, size)
+#[repr(C)]
+pub struct RustAllocatedRegionBuffer {
+    /// The start address of the buffer
+    pub ptr: *mut (Address, usize),
+    /// The length of the Rust buffer
+    pub len: usize,
     /// The capacity of the buffer
     pub capacity: usize,
 }
