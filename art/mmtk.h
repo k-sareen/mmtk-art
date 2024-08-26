@@ -116,6 +116,7 @@ struct TraceObjectClosure {
 typedef struct {
   size_t (*size_of) (void* object);
   void (*scan_object) (void* object, ScanObjectClosure closure);
+  bool (*is_valid_object) (void* object);
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
   void (*suspend_mutators) (void* tls);

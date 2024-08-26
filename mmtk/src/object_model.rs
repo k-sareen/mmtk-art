@@ -84,4 +84,11 @@ impl ObjectModel<Art> for ArtObjectModel {
     fn dump_object(_object: ObjectReference) {
         unimplemented!()
     }
+
+    fn is_object_sane(object: ObjectReference) -> bool {
+        // SAFETY: Assumes upcalls is valid
+        unsafe {
+            ((*UPCALLS).is_valid_object)(object)
+        }
+    }
 }
