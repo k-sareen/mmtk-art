@@ -27,7 +27,7 @@ cc_library_headers {
     min_sdk_version: "31",
 }
 
-rust_ffi_static {
+rust_ffi_shared {
     name: "libmmtk_art",
     host_supported: true,
     visibility: ["//visibility:public"],
