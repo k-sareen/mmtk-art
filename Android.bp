@@ -30,6 +30,7 @@ cc_library_headers {
 rust_ffi_shared {
     name: "libmmtk_art",
     host_supported: true,
+    prefer_rlib: true,
     visibility: ["//visibility:public"],
     crate_name: "mmtk_art",
     srcs: ["mmtk/src/lib.rs"],
