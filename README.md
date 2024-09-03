@@ -9,7 +9,6 @@ Our [MMTk fork](https://github.com/k-sareen/mmtk-core/tree/main-art-rebase) host
 ## Current Status
 
 We only support the `StickyImmix` and `Immix` plans in MMTk core.
-This is because we currently require roots to be pinned during a GC as there is an impedence mismatch between MMTk's and ART's expectations[^1].
 
 We can run headless ART builds both on target and host and for both x86_64 and aarch64 devices.
 
@@ -18,7 +17,8 @@ We have allocation fast-paths implemented for all architectures.
 We can boot an AOSP build on an x86_64 Cuttlefish VM with the `Immix` and `StickyImmix` plans.
 We can boot an AOSP build on an actual arm64 device with the `Immix` plan.
 
-[^1]: Namely, ART expects a root visitor to process the root immediately while MMTk expects a list of root slots to seed the transitive closure.
+Support for fully copying collectors such as `SemiSpace` is a work-in-progress.
+Currently it has been thoroughly tested for headless ART builds on host but some bugs remain on device.
 
 ## Building and Installation Instructions
 
