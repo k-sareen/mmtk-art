@@ -8,17 +8,14 @@ Our [MMTk fork](https://github.com/k-sareen/mmtk-core/tree/main-art-rebase) host
 
 ## Current Status
 
-We only support the `StickyImmix` and `Immix` plans in MMTk core.
+We support `SemiSpace`, `Immix`, `StickyImmix`, and `GenCopy` plans in MMTk core.
 
 We can run headless ART builds both on target and host and for both x86_64 and aarch64 devices.
 
 We have allocation fast-paths implemented for all architectures.
 
-We can boot an AOSP build on an x86_64 Cuttlefish VM with the `Immix` and `StickyImmix` plans.
-We can boot an AOSP build on an actual arm64 device with the `Immix` plan.
-
-Support for fully copying collectors such as `SemiSpace` is a work-in-progress.
-Currently it has been thoroughly tested for headless ART builds on host but some bugs remain on device.
+We can boot an AOSP build on an x86_64 Cuttlefish VM with the `SemiSpace`, `Immix`, and `StickyImmix` plans.
+We can boot an AOSP build on an actual arm64 device with the `SemiSpace` and `Immix` plans.
 
 ## Building and Installation Instructions
 
@@ -127,7 +124,7 @@ $ adb logcat | grep "mmtk-art"
 
 ## Known Limitations
 
-The `StickyImmix` plan is only supported for x86_64 as the write barriers have not been implemented for any other platform.
+Generational plans such as `StickyImmix` and `GenCopy` are only supported for x86_64 as the write barriers have not been implemented for any other platform.
 
 We've temporarily disabled loading app images at run-time since we currently do not have a way to remove image spaces inside MMTk.
 Once we have this functionality, we will enable this feature and register app images with MMTk.
