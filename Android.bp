@@ -49,9 +49,12 @@ rust_ffi_shared {
         },
     },
     // "release" build
+    // XXX(kunals): Disable linker fatal warnings due to incompatible
+    // DWARF versions between Rust and C++ when using LTO
     // flags: [
     //     "-C lto=true",
     //     "-C linker-plugin-lto=true",
+    //     "-C link-arg=-Wl,--no-fatal-warnings",
     // ],
     apex_available: [
         "//apex_available:platform",
