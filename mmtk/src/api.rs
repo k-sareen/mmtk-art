@@ -475,7 +475,7 @@ pub extern "C" fn mmtk_handle_user_collection_request(
     tls: VMMutatorThread,
     force: bool,
     exhaustive: bool
-) {
+) -> bool {
     debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     mmtk::memory_manager::handle_user_collection_request(
         &SINGLETON,

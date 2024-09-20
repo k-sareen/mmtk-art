@@ -429,7 +429,7 @@ MmtkBumpPointer mmtk_get_default_thread_local_cursor_limit(MmtkMutator mutator);
  * @param force force a GC to occur
  * @param exhaustive force a full heap GC to occur
  */
-void mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive);
+bool mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive);
 
 /**
  * Request full-heap GC to occur before forking the Zygote for the first time.
