@@ -8,9 +8,10 @@ Our [MMTk fork](https://github.com/k-sareen/mmtk-core/tree/main-art-rebase) host
 
 ## Current Status
 
-We support `SemiSpace`, `Immix`, `StickyImmix`, and `GenCopy` plans in MMTk core.
+We support the `NoGC`, `SemiSpace`, `Immix`, `StickyImmix`, and `GenCopy` plans in MMTk core.
 
 We can run headless ART builds both on target and host and for both x86_64 and aarch64 devices.
+`NoGC` is only supported for headless ART builds.
 
 We have allocation fast-paths implemented for all architectures.
 
@@ -21,7 +22,7 @@ We can boot an AOSP build on an actual arm64 device with the `SemiSpace` and `Im
 
 ### Setting up
 
-Since we had to add/change repositories to get MMTk to build with ART, we maintain our own `repo` manifest file.
+Since we had to add/change repositories to get MMTk to build with ART, we maintain our own [`repo` manifest](https://github.com/k-sareen/mmtk-art-manifest) file.
 It is based off the `master-art` manifest file.
 We lock all versions of dependencies to ensure we can always build MMTk.
 The ART fork is based on commit [`451cfcf9d09515ef60d76bd8551fc68c6e3bf621`](https://android.googlesource.com/platform/art/+/451cfcf9d09515ef60d76bd8551fc68c6e3bf621).
