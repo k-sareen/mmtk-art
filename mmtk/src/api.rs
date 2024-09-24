@@ -469,7 +469,7 @@ pub extern "C" fn mmtk_set_image_space(boot_image_start_address: Address, boot_i
     mmtk::memory_manager::set_vm_space(mmtk_mut, boot_image_start_address, boot_image_size);
 }
 
-/// Handle user collection request
+/// Handle user collection request. Returns whether a GC was ran or not.
 #[no_mangle]
 pub extern "C" fn mmtk_handle_user_collection_request(
     tls: VMMutatorThread,

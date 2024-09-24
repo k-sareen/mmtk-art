@@ -428,6 +428,7 @@ MmtkBumpPointer mmtk_get_default_thread_local_cursor_limit(MmtkMutator mutator);
  * @param tls pointer to the mutator thread requesting GC
  * @param force force a GC to occur
  * @param exhaustive force a full heap GC to occur
+ * @return whether a GC was ran or not
  */
 bool mmtk_handle_user_collection_request(void* tls, bool force, bool exhaustive);
 
