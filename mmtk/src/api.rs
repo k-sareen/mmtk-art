@@ -595,6 +595,11 @@ pub extern "C" fn mmtk_set_is_zygote_process(is_zygote_process: bool) {
     SINGLETON.set_is_zygote_process(is_zygote_process);
 }
 
+/// Is the current runtime the Zygote process or not?
+pub(crate) fn mmtk_is_zygote_process() -> bool {
+    SINGLETON.is_zygote_process()
+}
+
 /// Hook called before the Zygote is forked. We stop GC worker threads and save
 /// their context here
 #[no_mangle]

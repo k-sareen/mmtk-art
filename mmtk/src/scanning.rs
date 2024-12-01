@@ -66,6 +66,8 @@ impl Scanning<Art> for ArtScanning {
             unsafe { ((*UPCALLS).sweep_system_weaks)() };
             false
         } else {
+            // Always clear soft references if we are the Zygote process
+            let clear_soft_references = crate::api::mmtk_is_emergency_collection() || crate::api::mmtk_is_zygote_process();
             let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
             match *current_phase {
                 RefProcessingPhase::Phase1 => {
@@ -79,7 +81,7 @@ impl Scanning<Art> for ArtScanning {
                                 })
                             }),
                             RefProcessingPhase::Phase1,
-                            crate::api::mmtk_is_emergency_collection(),
+                            clear_soft_references,
                         );
                     }
                     *current_phase = RefProcessingPhase::Phase2;
@@ -96,7 +98,7 @@ impl Scanning<Art> for ArtScanning {
                                 })
                             }),
                             RefProcessingPhase::Phase2,
-                            crate::api::mmtk_is_emergency_collection(),
+                            clear_soft_references,
                         );
                     }
                     *current_phase = RefProcessingPhase::Phase3;
@@ -113,7 +115,7 @@ impl Scanning<Art> for ArtScanning {
                                 })
                             }),
                             RefProcessingPhase::Phase3,
-                            crate::api::mmtk_is_emergency_collection(),
+                            clear_soft_references,
                         );
                     }
                     *current_phase = RefProcessingPhase::Phase1;
