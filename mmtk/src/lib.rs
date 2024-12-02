@@ -105,16 +105,12 @@ lazy_static! {
 }
 
 fn compress(o: ObjectReference) -> u32 {
-    if o.is_null() {
-        0u32
-    } else {
-        o.to_raw_address().as_usize() as u32
-    }
+    o.to_raw_address().as_usize() as u32
 }
 
-fn decompress(v: u32) -> ObjectReference {
+fn decompress(v: u32) -> Option<ObjectReference> {
     if v == 0 {
-        ObjectReference::NULL
+        None
     } else {
         // We mask the lowest-order bits in case, due to concurrency, a slot
         // (which happens to be an object) is enqueued while someone is trying
@@ -168,7 +164,7 @@ fn set_vm_layout(builder: &mut MMTKBuilder) {
 pub struct ArtEdge(pub Address);
 
 impl Edge for ArtEdge {
-    fn load(&self) -> ObjectReference {
+    fn load(&self) -> Option<ObjectReference> {
         // SAFETY: Assumes internal address is valid
         decompress(unsafe { self.0.load::<u32>() })
     }

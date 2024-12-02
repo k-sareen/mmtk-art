@@ -28,7 +28,8 @@ impl ObjectModel<Art> for ArtObjectModel {
         let src = from.to_raw_address();
         // SAFETY: Assumes src and dst are valid
         unsafe { std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), bytes) }
-        let to_obj = ObjectReference::from_raw_address(dst);
+        // SAFETY: dst is valid from above
+        let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(dst) };
         copy_context.post_copy(to_obj, bytes, semantics);
         to_obj
     }
@@ -76,7 +77,9 @@ impl ObjectModel<Art> for ArtObjectModel {
     }
 
     fn address_to_ref(addr: Address) -> ObjectReference {
-        ObjectReference::from_raw_address(addr)
+        debug_assert!(!addr.is_zero());
+        // SAFETY: We've checked that addr is not zero above
+        unsafe { ObjectReference::from_raw_address_unchecked(addr) }
     }
 
     fn dump_object(_object: ObjectReference) {

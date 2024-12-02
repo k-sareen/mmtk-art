@@ -374,39 +374,53 @@ pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
 
 /// Return if an object is allocated by MMTk
 #[no_mangle]
-pub extern "C" fn mmtk_is_object_in_heap_space(object: ObjectReference) -> bool {
-    mmtk::memory_manager::is_in_mmtk_spaces::<Art>(
-        object,
-    )
+pub extern "C" fn mmtk_is_object_in_heap_space(object: Option<ObjectReference>) -> bool {
+    if let Some(obj) = object {
+        mmtk::memory_manager::is_in_mmtk_spaces::<Art>(obj)
+    } else {
+        false
+    }
 }
 
 /// Check if given object is marked. This is used to implement the heap visitor
 #[no_mangle]
-pub extern "C" fn mmtk_is_object_marked(object: ObjectReference) -> bool {
+pub extern "C" fn mmtk_is_object_marked(object: Option<ObjectReference>) -> bool {
     // XXX(kunals): This may not really be an object...
-    object.is_reachable()
+    if let Some(obj) = object {
+        obj.is_reachable::<Art>()
+    } else {
+        false
+    }
 }
 
 /// Check if the given object is movable by MMTk
 #[no_mangle]
-pub extern "C" fn mmtk_is_object_movable(object: ObjectReference) -> bool {
-    object.is_movable()
+pub extern "C" fn mmtk_is_object_movable(object: Option<ObjectReference>) -> bool {
+    if let Some(obj) = object {
+        obj.is_movable::<Art>()
+    } else {
+        false
+    }
 }
 
 /// Check if the given object has been forwarded by MMTk
 #[no_mangle]
-pub extern "C" fn mmtk_is_object_forwarded(object: ObjectReference) -> bool {
-    object.get_forwarded_object().is_some()
+pub extern "C" fn mmtk_is_object_forwarded(object: Option<ObjectReference>) -> bool {
+    if let Some(obj) = object {
+        obj.get_potential_forwarded_object::<Art>().is_some()
+    } else {
+        false
+    }
 }
 
 /// Get the forwarding address of the given object if it has been forwarded.
 /// Returns `nullptr` if the object hasn't been forwarded.
 #[no_mangle]
-pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> ObjectReference {
-    let forwarded_object = object.get_forwarded_object();
-    match forwarded_object {
-        Some(obj) => obj,
-        None => ObjectReference::NULL,
+pub extern "C" fn mmtk_get_forwarded_object(object: Option<ObjectReference>) -> Option<ObjectReference> {
+    if let Some(obj) = object {
+        obj.get_forwarded_object::<Art>()
+    } else {
+        None
     }
 }
 
@@ -523,7 +537,7 @@ pub extern "C" fn mmtk_object_reference_write_pre(
     mutator: *mut Mutator<Art>,
     src: ObjectReference,
     slot: ArtEdge,
-    target: ObjectReference,
+    target: Option<ObjectReference>,
 ) {
     // SAFETY: Assumes mutator is valid
     unsafe {
@@ -541,7 +555,7 @@ pub extern "C" fn mmtk_object_reference_write_post(
     mutator: *mut Mutator<Art>,
     src: ObjectReference,
     slot: ArtEdge,
-    target: ObjectReference,
+    target: Option<ObjectReference>,
 ) {
     // SAFETY: Assumes mutator is valid
     unsafe {
