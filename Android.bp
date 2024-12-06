@@ -48,6 +48,20 @@ rust_ffi_shared {
             ],
         },
     },
+    // If we want to use MMTk's USDT tracing facilities, then we need
+    // to avoid stripping the section
+    // strip: {
+    //     none: true,
+    // },
+    // "debug" build
+    flags: [
+        "-C opt-level=0",
+        "-C debuginfo=2",
+        "-C strip=none",
+        "-C debug-assertions=true",
+        "-C overflow-checks=true",
+        "-C codegen-units=256",
+    ],
     // "release" build
     // XXX(kunals): Disable linker fatal warnings due to incompatible
     // DWARF versions between Rust and C++ when using LTO
