@@ -28,6 +28,7 @@ use std::sync::atomic::Ordering;
 
 impl Object {
     /// Visit the instance fields of an object.
+    #[inline]
     pub fn visit_instance_fields_references<EV: EdgeVisitor<ArtEdge>>(
         &self,
         klass: &Class,
@@ -69,6 +70,7 @@ impl Object {
 impl Class {
     /// Visit references in an instance of a java.lang.Class.
     #[allow(non_upper_case_globals)]
+    #[inline]
     pub fn visit_references<const kVisitNativeRoots: bool, EV: EdgeVisitor<ArtEdge>>(
         &self,
         object: ObjectReference,
@@ -91,6 +93,7 @@ impl Class {
     }
 
     /// Visit static reference fields in an instance of a java.lang.Class.
+    #[inline]
     fn visit_static_fields_references<EV: EdgeVisitor<ArtEdge>>(&self, edge_visitor: &mut EV) {
         debug_assert!(!self.is_temp());
         debug_assert!(self.is_resolved());
@@ -110,6 +113,7 @@ impl Class {
 
 impl<T> ObjectArray<T> {
     /// Visit references in an object array.
+    #[inline]
     pub fn visit_references<EV: EdgeVisitor<ArtEdge>>(&self, edge_visitor: &mut EV) {
         let length = self.array.length as usize;
         for i in 0..length {
@@ -176,6 +180,7 @@ impl ClassLoader {
 
 /// Efficiently scan an object.
 #[allow(non_upper_case_globals)]
+#[inline]
 pub fn scan_object<const kVisitNativeRoots: bool, EV: EdgeVisitor<ArtEdge>>(
     _tls: VMWorkerThread,
     object: ObjectReference,
