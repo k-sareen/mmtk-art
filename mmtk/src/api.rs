@@ -94,6 +94,12 @@ pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
     mmtk::memory_manager::initialize_collection(&SINGLETON, tls);
 }
 
+/// Set the size of a pointer used by the runtime
+#[no_mangle]
+pub extern "C" fn mmtk_set_runtime_pointer_size(pointer_size: usize) {
+    crate::ART_POINTER_SIZE.store(pointer_size, Ordering::Relaxed);
+}
+
 /// Set the min and max heap size
 #[no_mangle]
 pub extern "C" fn mmtk_set_heap_size(min: usize, max: usize) -> bool {

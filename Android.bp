@@ -38,6 +38,7 @@ rust_ffi_shared {
     rustlibs: [
         "liblazy_static",
         "liblibc",
+        "libmemoffset",
         "libmmtk",
     ],
     target: {

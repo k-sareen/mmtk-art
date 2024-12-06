@@ -1,4 +1,5 @@
 use crate::{
+    unlikely,
     Art,
     ArtEdge,
     NodesClosure,
@@ -6,8 +7,8 @@ use crate::{
     ScanObjectClosure,
     SlotsClosure,
     TraceObjectClosure,
-    UPCALLS,
     RefProcessingPhase,
+    UPCALLS,
 };
 use mmtk::{
     scheduler::GCWorker,
@@ -27,6 +28,19 @@ static CURRENT_WEAK_REF_PHASE: Mutex<RefProcessingPhase> = Mutex::new(RefProcess
 /// Implements scanning trait
 pub struct ArtScanning;
 
+/// Return the forwarding bits for a given `ObjectReference`.
+fn get_forwarding_status<VM: VMBinding>(object: ObjectReference) -> u8 {
+    VM::VMObjectModel::LOCAL_FORWARDING_BITS_SPEC.load_atomic::<VM, u8>(
+        object,
+        None,
+        std::sync::atomic::Ordering::Relaxed,
+    )
+}
+
+fn is_not_forwarded<VM: VMBinding>(object: ObjectReference) -> bool {
+    get_forwarding_status::<VM>(object) == 0b00
+}
+
 impl Scanning<Art> for ArtScanning {
     fn scan_roots_in_mutator_thread(
         _tls: VMWorkerThread,
@@ -42,16 +56,26 @@ impl Scanning<Art> for ArtScanning {
     }
 
     fn scan_object<EV: EdgeVisitor<ArtEdge>>(
-        _tls: VMWorkerThread,
+        tls: VMWorkerThread,
         object: ObjectReference,
         edge_visitor: &mut EV,
     ) {
-        // SAFETY: Assumes upcalls is valid
-        unsafe {
-            ((*UPCALLS).scan_object)(
-                object,
-                to_scan_object_closure::<EV>(edge_visitor),
-            );
+        debug_assert!(
+            is_not_forwarded::<Art>(object),
+            "Object {} has forwarding bits {:#02b}",
+            object,
+            get_forwarding_status::<Art>(object),
+        );
+        if unlikely(cfg!(feature = "simple_scan_object")) {
+            // SAFETY: Assumes upcalls is valid
+            unsafe {
+                ((*UPCALLS).scan_object)(
+                    object,
+                    to_scan_object_closure::<EV>(edge_visitor),
+                );
+            }
+        } else {
+            crate::object_scanning::scan_object::</* kVisitNativeRoots= */ true, EV>(tls, object, edge_visitor)
         }
     }
 

@@ -47,7 +47,11 @@ use std::{
     ptr::null_mut,
     sync::{
         Mutex,
-        atomic::{AtomicBool, Ordering},
+        atomic::{
+            AtomicBool,
+            AtomicUsize,
+            Ordering,
+        },
     }
 };
 
@@ -58,12 +62,16 @@ const LOG_BYTES_IN_EDGE: u8 = 2;
 
 /// Module which implements `ActivePlan` trait
 pub mod active_plan;
+/// Module which implements the Android C++ ABI
+pub(crate) mod abi;
 /// Module which implements the user-facing API
 pub mod api;
 /// Module which implements `Collection` trait
 pub mod collection;
 /// Module which implements `ObjectModel` trait
 pub mod object_model;
+/// Module which implements efficient object scanning
+pub(crate) mod object_scanning;
 /// Module which implements `ReferenceGlue` trait
 pub mod reference_glue;
 /// Module which implements `Scanning` trait
@@ -89,6 +97,8 @@ pub enum RefProcessingPhase {
 
 /// Has MMTk been initialized?
 pub static IS_MMTK_INITIALIZED: AtomicBool = AtomicBool::new(false);
+/// The size of a pointer in ART
+pub static ART_POINTER_SIZE: AtomicUsize = AtomicUsize::new(std::mem::size_of::<usize>());
 
 lazy_static! {
     /// MMTk builder instance
@@ -102,6 +112,32 @@ lazy_static! {
         IS_MMTK_INITIALIZED.store(true, Ordering::SeqCst);
         *ret
     };
+}
+
+// likely() and unlikely() compiler hints in stable Rust
+// [1]: https://github.com/rust-lang/hashbrown/blob/a41bd76de0a53838725b997c6085e024c47a0455/src/raw/mod.rs#L48-L70
+// [2]: https://users.rust-lang.org/t/compiler-hint-for-unlikely-likely-for-if-branches/62102/3
+#[cfg(not(feature = "nightly"))]
+#[inline]
+#[cold]
+fn cold() {}
+
+#[cfg(not(feature = "nightly"))]
+#[inline]
+pub(crate) fn likely(b: bool) -> bool {
+    if !b {
+        cold();
+    }
+    b
+}
+
+#[cfg(not(feature = "nightly"))]
+#[inline]
+pub(crate) fn unlikely(b: bool) -> bool {
+    if b {
+        cold();
+    }
+    b
 }
 
 fn compress(o: ObjectReference) -> u32 {
@@ -269,6 +305,17 @@ impl VMBinding for Art {
     const USE_ALLOCATION_OFFSET: bool = false;
 }
 
+/// ART object types with native roots
+#[repr(u8)]
+pub enum ArtObjectWithNativeRootsType {
+    /// java.lang.Class
+    Class = 0,
+    /// java.lang.DexCache
+    DexCache,
+    /// java.lang.ClassLoader
+    ClassLoader,
+}
+
 #[repr(C)]
 /// Upcalls from MMTk to ART
 pub struct ArtUpcalls {
@@ -277,6 +324,18 @@ pub struct ArtUpcalls {
     /// Scan object for references
     pub scan_object: extern "C" fn(
         object: ObjectReference,
+        closure: ScanObjectClosure,
+    ),
+    /// Scan an object for native roots
+    pub scan_native_roots: extern "C" fn(
+        object: ObjectReference,
+        closure: ScanObjectClosure,
+        object_type: ArtObjectWithNativeRootsType,
+    ),
+    /// Process a java.lang.Reference object
+    pub process_referent: extern "C" fn(
+        klass: ObjectReference,
+        reference: ObjectReference,
         closure: ScanObjectClosure,
     ),
     /// Is the given object valid?

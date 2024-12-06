@@ -49,6 +49,12 @@ enum MmtkAllocationError {
   HeapOOM = 0,
   MmapOOM = 1,
 };
+// ART object types with native roots
+enum ArtObjectNativeRootsType {
+  kArtObjNRTClass       = 0,
+  kArtObjNRTDexCache    = 1,
+  kArtObjNRTClassLoader = 2,
+};
 
 // A representation of an MMTk bump pointer for embedding in the mutator's TLS
 typedef struct {
@@ -137,6 +143,12 @@ struct TraceObjectClosure {
 typedef struct {
   size_t (*size_of) (void* object);
   void (*scan_object) (void* object, ScanObjectClosure closure);
+  void (*scan_native_roots)(
+    void *object,
+    ScanObjectClosure closure,
+    ArtObjectNativeRootsType object_type
+  );
+  void (*process_referent) (void* klass, void* ref, ScanObjectClosure closure);
   bool (*is_valid_object) (void* object);
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
@@ -253,6 +265,14 @@ RustObjectReferenceBuffer mmtk_enumerate_large_objects();
  * @param boot_image_size the size of the boot image space
  */
 void mmtk_set_image_space(uint32_t boot_image_start_address, uint32_t boot_image_size);
+
+/**
+ * Set the size of a pointer used by the runtime. Note that it could be something other
+ * than the machine pointer size if we are cross-compiling.
+ *
+ * @param pointer_size the size of a pointer
+ */
+void mmtk_set_runtime_pointer_size(size_t pointer_size);
 
 /**
  * Return if the object has been marked by a GC or not (i.e. return if the
