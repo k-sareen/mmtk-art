@@ -41,7 +41,7 @@ impl ObjectModel<Art> for ArtObjectModel {
     fn get_current_size(object: ObjectReference) -> usize {
         use mmtk::util::conversions;
         // SAFETY: Assumes upcalls is valid
-        conversions::raw_align_up(unsafe { ((*UPCALLS).size_of)(object) }, Art::MIN_ALIGNMENT)
+        conversions::raw_align_up(crate::abi::get_object_size(object), Art::MIN_ALIGNMENT)
     }
 
     fn get_size_when_copied(object: ObjectReference) -> usize {

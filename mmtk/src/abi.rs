@@ -117,8 +117,10 @@ impl Object {
     pub fn get_class(&self) -> ArtHeapReference<Class> {
         debug_assert!(ArtObjectModel::is_object_sane(self.into()));
         let klass_slot = self.klass_slot();
-        // SAFETY: `klass_slot` is a valid address since object is a valid ObjectReference.
-        unsafe { klass_slot.0.load::<ArtHeapReference<Class>>() }
+        // XXX(kunals): Need to mask the lowest two bits to remove the
+        // forwarding bits in case we want to read the size of an object, for
+        // example, when we are doing a GC
+        klass_slot.load_class_without_forwarding_bits()
     }
 }
 
@@ -564,6 +566,11 @@ impl Class {
         ClassStatus::from_u32(status >> (32 - 4))
     }
 
+    /// Get the component size shift of the Class.
+    pub fn get_component_size_shift(&self) -> usize {
+        self.component_type.get_primitive_type_size_shift()
+    }
+
     /// Get the primitive type of the Class.
     pub fn get_primitive_type(&self) -> ArtPrimitive {
         let r#type = ArtPrimitive::from_u32(self.primitive_type & Class::kPrimitiveTypeMask);
@@ -572,6 +579,17 @@ impl Class {
             ArtPrimitive::component_size_shift(r#type),
         );
         r#type
+    }
+
+    /// Get the size shift of the primitive type of the Class.
+    pub fn get_primitive_type_size_shift(&self) -> usize {
+        let size_shift = (self.primitive_type >> Class::kPrimitiveTypeSizeShiftShift) as usize;
+        debug_assert_eq!(
+            size_shift,
+            ArtPrimitive::component_size_shift(
+                ArtPrimitive::from_u32(self.primitive_type & Class::kPrimitiveTypeMask)),
+        );
+        size_shift
     }
 
     /// Get the reference_instance_offsets field of the Class.
@@ -596,6 +614,12 @@ impl Class {
         // SAFETY: addr is a valid address from above.
         // Have to use an atomic load to comply with Java semantics
         unsafe { addr.atomic_load::<AtomicI32>(Ordering::Relaxed) as u32 }
+    }
+
+    /// Get the object size from the Class.
+    pub fn get_object_size(&self) -> usize {
+        debug_assert!(!self.is_variable_size());
+        self.object_size as usize
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -671,6 +695,21 @@ pub struct Array {
     pub first_element: u32,
 }
 
+impl From<&Object> for &Array {
+    fn from(o: &Object) -> Self {
+        debug_assert!(o.get_class().is_array_class());
+        // SAFETY: o is a valid Array from above
+        unsafe { std::mem::transmute(o) }
+    }
+}
+
+impl From<&Array> for &Object {
+    fn from(a: &Array) -> Self {
+        // SAFETY: a is a valid Array and all arrays are valid java.lang.Objects
+        unsafe { std::mem::transmute(a) }
+    }
+}
+
 impl Array {
     /// Get the offset to the payload of the array
     pub fn data_offset(&self, component_size: usize) -> usize {
@@ -678,6 +717,20 @@ impl Array {
         let data_offset = raw_align_up(offset_of!(Array, first_element), component_size);
         debug_assert_eq!(raw_align_up(data_offset, component_size), data_offset);
         data_offset
+    }
+
+    /// Get the component size shift of the array
+    pub fn get_component_size_shift(&self) -> usize {
+        self.header.get_class().get_component_size_shift()
+    }
+
+    /// Get the size of the array
+    pub fn size_of(&self) -> usize {
+        let component_size_shift = self.get_component_size_shift();
+        let component_count = self.length as usize;
+        let header_size = self.data_offset(1 << component_size_shift);
+        let data_size = component_count << component_size_shift;
+        header_size + data_size
     }
 }
 
@@ -708,6 +761,58 @@ impl<T> ObjectArray<T> {
     /// Get the offset of an element in the array
     pub fn offset_of_element(&self, index: usize) -> usize {
         self.array.data_offset(ART_HEAP_REFERENCE_SIZE) + index * ART_HEAP_REFERENCE_SIZE
+    }
+}
+
+/// Rust mirror of a java.lang.String
+#[repr(C)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub struct ArtString {
+    /// Object header
+    pub header: Object,
+    /// Count of the string
+    pub count: i32,
+    /// Hash code of the string
+    pub hash_code: u32,
+    // String value
+    // pub string_value: u16,
+}
+
+impl From<&Object> for &ArtString {
+    fn from(o: &Object) -> Self {
+        debug_assert!(o.get_class().is_string_class());
+        // SAFETY: o is a valid ArtString from above
+        unsafe { std::mem::transmute(o) }
+    }
+}
+
+impl From<&ArtString> for &Object {
+    fn from(s: &ArtString) -> Self {
+        // SAFETY: s is a valid ArtString and all strings are valid java.lang.Objects
+        unsafe { std::mem::transmute(s) }
+    }
+}
+
+impl ArtString {
+    /// Is the string compressed?
+    pub fn is_compressed(&self) -> bool {
+        self.count & 0b1 == 0b0
+    }
+
+    /// Get the length of the string.
+    pub fn get_length(&self) -> i32 {
+        self.count >> 1
+    }
+
+    /// Get the size of the string.
+    pub fn size_of(&self) -> usize {
+        let mut size = std::mem::size_of::<ArtString>();
+        if self.is_compressed() {
+            size += std::mem::size_of::<u8>() * (self.get_length() as usize);
+        } else {
+            size += std::mem::size_of::<u16>() * (self.get_length() as usize);
+        }
+        mmtk::util::conversions::raw_align_up(size, crate::Art::MIN_ALIGNMENT)
     }
 }
 
@@ -827,6 +932,26 @@ impl From<&ClassLoader> for &Object {
         // SAFETY: cl is a valid ClassLoader
         unsafe { std::mem::transmute(cl) }
     }
+}
+
+/// Get the size of an object
+#[inline]
+pub fn get_object_size(object: ObjectReference) -> usize {
+  let o: &Object = object.into();
+  let result = if o.get_class().is_array_class() {
+      let a: &Array = o.into();
+      a.size_of()
+  } else if o.get_class().is_class_class() {
+      let klass: &Class = o.into();
+      klass.class_size as usize
+  } else if o.get_class().is_string_class() {
+      let s: &ArtString = o.into();
+      s.size_of()
+  } else {
+      o.get_class().get_object_size()
+  };
+  debug_assert!(result >= OBJECT_HEADER_SIZE as usize);
+  result
 }
 
 /// Rust mirror of `ArtField`

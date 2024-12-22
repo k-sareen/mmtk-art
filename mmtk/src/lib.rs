@@ -7,6 +7,10 @@ extern crate lazy_static;
 extern crate log;
 
 use crate::{
+    abi::{
+        ArtHeapReference,
+        Class,
+    },
     active_plan::ArtActivePlan,
     collection::{
         ArtCollection,
@@ -208,6 +212,16 @@ impl Edge for ArtEdge {
     fn store(&self, object: ObjectReference) {
         // SAFETY: Assumes internal address is valid
         unsafe { self.0.store::<u32>(compress(object)) }
+    }
+}
+
+impl ArtEdge {
+    /// Load the klass pointer without the forwarding bits. This is used for
+    /// cases where we need to get the class of an object that has been
+    /// forwarded to get the object size
+    pub fn load_class_without_forwarding_bits(&self) -> ArtHeapReference<Class> {
+        // SAFETY: Assumes internal address is valid
+        unsafe { std::mem::transmute(self.0.load::<u32>() & !0b11) }
     }
 }
 
