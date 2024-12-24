@@ -632,7 +632,7 @@ impl Class {
         num_64bit_static_fields: u32,
         num_ref_static_fields: u32,
         num_ref_bitmap_entries: u32,
-        ptr_size: usize
+        ptr_size: usize,
     ) -> usize {
         // Space used by java.lang.Class and its instance fields.
         let mut size = std::mem::size_of::<Class>();
@@ -937,21 +937,21 @@ impl From<&ClassLoader> for &Object {
 /// Get the size of an object
 #[inline]
 pub fn get_object_size(object: ObjectReference) -> usize {
-  let o: &Object = object.into();
-  let result = if o.get_class().is_array_class() {
-      let a: &Array = o.into();
-      a.size_of()
-  } else if o.get_class().is_class_class() {
-      let klass: &Class = o.into();
-      klass.class_size as usize
-  } else if o.get_class().is_string_class() {
-      let s: &ArtString = o.into();
-      s.size_of()
-  } else {
-      o.get_class().get_object_size()
-  };
-  debug_assert!(result >= OBJECT_HEADER_SIZE as usize);
-  result
+    let o: &Object = object.into();
+    let result = if o.get_class().is_array_class() {
+        let a: &Array = o.into();
+        a.size_of()
+    } else if o.get_class().is_class_class() {
+        let klass: &Class = o.into();
+        klass.class_size as usize
+    } else if o.get_class().is_string_class() {
+        let s: &ArtString = o.into();
+        s.size_of()
+    } else {
+        o.get_class().get_object_size()
+    };
+    debug_assert!(result >= OBJECT_HEADER_SIZE as usize);
+    result
 }
 
 /// Rust mirror of `ArtField`
