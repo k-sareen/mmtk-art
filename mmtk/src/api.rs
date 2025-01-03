@@ -3,11 +3,11 @@ extern crate android_logger;
 
 use crate::{
     Art,
-    ArtEdge,
+    ArtSlot,
     ArtUpcalls,
     BUILDER,
     IS_MMTK_INITIALIZED,
-    LOG_BYTES_IN_EDGE,
+    LOG_BYTES_IN_SLOT,
     RustAllocatedRegionBuffer,
     RustObjectReferenceBuffer,
     SINGLETON,
@@ -542,7 +542,7 @@ pub extern "C" fn mmtk_is_nursery_collection() -> bool {
 pub extern "C" fn mmtk_object_reference_write_pre(
     mutator: *mut Mutator<Art>,
     src: ObjectReference,
-    slot: ArtEdge,
+    slot: ArtSlot,
     target: Option<ObjectReference>,
 ) {
     // SAFETY: Assumes mutator is valid
@@ -560,7 +560,7 @@ pub extern "C" fn mmtk_object_reference_write_pre(
 pub extern "C" fn mmtk_object_reference_write_post(
     mutator: *mut Mutator<Art>,
     src: ObjectReference,
-    slot: ArtEdge,
+    slot: ArtSlot,
     target: Option<ObjectReference>,
 ) {
     // SAFETY: Assumes mutator is valid
@@ -581,7 +581,7 @@ pub extern "C" fn mmtk_array_copy_pre(
     dst: Address,
     count: usize,
 ) {
-    let bytes: usize = count << LOG_BYTES_IN_EDGE;
+    let bytes: usize = count << LOG_BYTES_IN_SLOT;
     // SAFETY: Assumes mutator is valid
     unsafe {
         (*mutator)
@@ -600,7 +600,7 @@ pub extern "C" fn mmtk_array_copy_post(
     dst: Address,
     count: usize,
 ) {
-    let bytes: usize = count << LOG_BYTES_IN_EDGE;
+    let bytes: usize = count << LOG_BYTES_IN_SLOT;
     // SAFETY: Assumes mutator is valid
     unsafe {
         (*mutator)

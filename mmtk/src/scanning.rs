@@ -1,7 +1,7 @@
 use crate::{
     unlikely,
     Art,
-    ArtEdge,
+    ArtSlot,
     NodesClosure,
     RustBuffer,
     ScanObjectClosure,
@@ -45,20 +45,20 @@ impl Scanning<Art> for ArtScanning {
     fn scan_roots_in_mutator_thread(
         _tls: VMWorkerThread,
         _mutator: &'static mut Mutator<Art>,
-        _factory: impl RootsWorkFactory<ArtEdge>,
+        _factory: impl RootsWorkFactory<ArtSlot>,
     ) {}
 
-    fn scan_vm_specific_roots(_tls: VMWorkerThread, mut factory: impl RootsWorkFactory<ArtEdge>) {
+    fn scan_vm_specific_roots(_tls: VMWorkerThread, mut factory: impl RootsWorkFactory<ArtSlot>) {
         // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).scan_all_roots)(to_slots_closure(&mut factory));
         }
     }
 
-    fn scan_object<EV: EdgeVisitor<ArtEdge>>(
+    fn scan_object<SV: SlotVisitor<ArtSlot>>(
         tls: VMWorkerThread,
         object: ObjectReference,
-        edge_visitor: &mut EV,
+        slot_visitor: &mut SV,
     ) {
         debug_assert!(
             is_not_forwarded::<Art>(object),
@@ -71,11 +71,11 @@ impl Scanning<Art> for ArtScanning {
             unsafe {
                 ((*UPCALLS).scan_object)(
                     object,
-                    to_scan_object_closure::<EV>(edge_visitor),
+                    to_scan_object_closure::<SV>(slot_visitor),
                 );
             }
         } else {
-            crate::object_scanning::scan_object::</* kVisitNativeRoots= */ true, EV>(tls, object, edge_visitor)
+            crate::object_scanning::scan_object::</* kVisitNativeRoots= */ true, SV>(tls, object, slot_visitor)
         }
     }
 
@@ -169,7 +169,7 @@ const WORK_PACKET_CAPACITY: usize = 4096;
 /// used for reporting nodes to MMTk. The C++ code should store nodes in the
 /// buffer carefully to avoid segfaulting.
 #[allow(unused)]
-extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
+extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
     ptr: *mut Address,
     length: usize,
     capacity: usize,
@@ -195,7 +195,7 @@ extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
 /// Create a buffer of size `length` and capacity `capacity`. This buffer is
 /// used for reporting slots to MMTk. The C++ code should store slots in the
 /// buffer carefully to avoid segfaulting.
-extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
+extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
     ptr: *mut Address,
     length: usize,
     capacity: usize,
@@ -203,10 +203,10 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
 ) -> RustBuffer {
     if !ptr.is_null() {
         // SAFETY: Assumes ptr is valid
-        let buf = unsafe { Vec::<ArtEdge>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
+        let buf = unsafe { Vec::<ArtSlot>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
         // SAFETY: Assumes factory_ptr is valid
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
-        factory.create_process_edge_roots_work(buf);
+        factory.create_process_roots_work(buf);
     }
     let (ptr, len, capacity) = {
         // TODO: Use Vec::into_raw_parts() when the method is available.
@@ -219,18 +219,18 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtEdge>>(
 }
 
 /// Function that allows C/C++ code to invoke a `ScanObjectClosure` closure
-extern "C" fn scan_object_fn<EV: EdgeVisitor<ArtEdge>>(
-    edge: ArtEdge,
-    edge_visitor_ptr: *mut libc::c_void
+extern "C" fn scan_object_fn<SV: SlotVisitor<ArtSlot>>(
+    slot: ArtSlot,
+    slot_visitor_ptr: *mut libc::c_void
 ) {
-    // SAFETY: Assumes edge_visitor_ptr is valid
-    let edge_visitor: &mut EV = unsafe { &mut *(edge_visitor_ptr as *mut EV) };
-    edge_visitor.visit_edge(edge);
+    // SAFETY: Assumes slot_visitor_ptr is valid
+    let slot_visitor: &mut SV = unsafe { &mut *(slot_visitor_ptr as *mut SV) };
+    slot_visitor.visit_slot(slot);
 }
 
 /// Convert a `RootsWorkFactory` into a `NodesClosure`
 #[allow(unused)]
-pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtEdge>>(
+pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtSlot>>(
     factory: &mut F
 ) -> NodesClosure {
     NodesClosure {
@@ -240,7 +240,7 @@ pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtEdge>>(
 }
 
 /// Convert a `RootsWorkFactory` into a `SlotsClosure`
-pub(crate) fn to_slots_closure<F: RootsWorkFactory<ArtEdge>>(
+pub(crate) fn to_slots_closure<F: RootsWorkFactory<ArtSlot>>(
     factory: &mut F
 ) -> SlotsClosure {
     SlotsClosure {
@@ -249,12 +249,12 @@ pub(crate) fn to_slots_closure<F: RootsWorkFactory<ArtEdge>>(
     }
 }
 
-/// Convert an `EdgeVisitor` to a `ScanObjectClosure`
-pub(crate) fn to_scan_object_closure<EV: EdgeVisitor<ArtEdge>>(
-    edge_visitor: &mut EV
+/// Convert an `SlotVisitor` to a `ScanObjectClosure`
+pub(crate) fn to_scan_object_closure<SV: SlotVisitor<ArtSlot>>(
+    slot_visitor: &mut SV
 ) -> ScanObjectClosure {
     ScanObjectClosure {
-        func: scan_object_fn::<EV>,
-        data: edge_visitor as *mut EV as *mut libc::c_void,
+        func: scan_object_fn::<SV>,
+        data: slot_visitor as *mut SV as *mut libc::c_void,
     }
 }

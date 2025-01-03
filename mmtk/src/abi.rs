@@ -1,6 +1,6 @@
 use crate::{
     ArtObjectModel,
-    ArtEdge,
+    ArtSlot,
 };
 use memoffset::offset_of;
 use mmtk::{
@@ -32,8 +32,8 @@ pub const OBJECT_HEADER_SIZE: u32 = 8;
 pub const ART_HEAP_REFERENCE_SIZE: usize = std::mem::size_of::<ArtHeapReference<Object>>();
 
 /// Get the slot of a field in an object.
-pub fn get_field_slot<T>(o: &T, offset: i32) -> ArtEdge {
-    ArtEdge(get_field_address(o, offset))
+pub fn get_field_slot<T>(o: &T, offset: i32) -> ArtSlot {
+    ArtSlot(get_field_address(o, offset))
 }
 
 /// Get the address of a field in an object.
@@ -109,7 +109,7 @@ impl Object {
     }
 
     /// Return the address of the klass slot of an object.
-    pub fn klass_slot(&self) -> ArtEdge {
+    pub fn klass_slot(&self) -> ArtSlot {
         get_field_slot(self, Object::class_offset() as i32)
     }
 

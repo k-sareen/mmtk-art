@@ -36,9 +36,9 @@ use mmtk::{
         ObjectReference,
     },
     vm::{
-        edge_shape::{
-            Edge,
+        slot::{
             MemorySlice,
+            Slot,
         },
         VMBinding,
     },
@@ -61,8 +61,8 @@ use std::{
 
 /// log_2 of how many bytes in an integer
 const LOG_BYTES_IN_INT:  u8 = 2;
-/// log_2 of how many bytes in an edge
-const LOG_BYTES_IN_EDGE: u8 = 2;
+/// log_2 of how many bytes in a slot
+const LOG_BYTES_IN_SLOT: u8 = 2;
 
 /// Module which implements `ActivePlan` trait
 pub mod active_plan;
@@ -198,12 +198,12 @@ fn set_vm_layout(builder: &mut MMTKBuilder) {
     builder.set_vm_layout(constants);
 }
 
-/// The type of edge in ART. ART edges only operate on 32-bits
+/// The type of slot in ART. ART slots only operate on 32-bits
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct ArtEdge(pub Address);
+pub struct ArtSlot(pub Address);
 
-impl Edge for ArtEdge {
+impl Slot for ArtSlot {
     fn load(&self) -> Option<ObjectReference> {
         // SAFETY: Assumes internal address is valid
         decompress(unsafe { self.0.load::<u32>() })
@@ -215,7 +215,7 @@ impl Edge for ArtEdge {
     }
 }
 
-impl ArtEdge {
+impl ArtSlot {
     /// Load the klass pointer without the forwarding bits. This is used for
     /// cases where we need to get the class of an object that has been
     /// forwarded to get the object size
@@ -225,49 +225,49 @@ impl ArtEdge {
     }
 }
 
-/// A range of `ArtEdge`s, usually used to represent arrays
+/// A range of `ArtSlot`s, usually used to represent arrays
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ArtMemorySlice {
-    range: Range<ArtEdge>,
+    range: Range<ArtSlot>,
 }
 
 impl From<Range<Address>> for ArtMemorySlice {
     fn from(value: Range<Address>) -> Self {
         Self {
             range: Range {
-                start: ArtEdge(value.start),
-                end: ArtEdge(value.end),
+                start: ArtSlot(value.start),
+                end: ArtSlot(value.end),
             },
         }
     }
 }
 
 /// An iterator through an ArtMemorySlice
-pub struct ArtEdgeIterator {
+pub struct ArtSlotIterator {
     cursor: Address,
     limit: Address,
 }
 
-impl Iterator for ArtEdgeIterator {
-    type Item = ArtEdge;
+impl Iterator for ArtSlotIterator {
+    type Item = ArtSlot;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cursor >= self.limit {
             None
         } else {
-            let edge = self.cursor;
-            self.cursor += (1 << LOG_BYTES_IN_EDGE) as usize;
-            Some(ArtEdge(edge))
+            let slot = self.cursor;
+            self.cursor += (1 << LOG_BYTES_IN_SLOT) as usize;
+            Some(ArtSlot(slot))
         }
     }
 }
 
 impl MemorySlice for ArtMemorySlice {
-    type Edge = ArtEdge;
-    type EdgeIterator = ArtEdgeIterator;
+    type SlotType = ArtSlot;
+    type SlotIterator = ArtSlotIterator;
 
-    fn iter_edges(&self) -> Self::EdgeIterator {
-        ArtEdgeIterator {
+    fn iter_slots(&self) -> Self::SlotIterator {
+        ArtSlotIterator {
             cursor: self.range.start.0,
             limit: self.range.end.0,
         }
@@ -310,7 +310,7 @@ impl VMBinding for Art {
     type VMReferenceGlue = ArtReferenceGlue;
     type VMScanning = ArtScanning;
 
-    type VMEdge = ArtEdge;
+    type VMSlot = ArtSlot;
     type VMMemorySlice = ArtMemorySlice;
 
     const MIN_ALIGNMENT: usize = 8;
@@ -495,7 +495,7 @@ pub struct SlotsClosure {
 pub struct ScanObjectClosure {
     /// The closure to invoke
     pub func: extern "C" fn(
-        edge: ArtEdge,
+        slot: ArtSlot,
         data: *mut libc::c_void,
     ),
     /// The Rust context associated with the closure
