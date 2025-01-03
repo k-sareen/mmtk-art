@@ -17,6 +17,7 @@ impl ObjectModel<Art> for ArtObjectModel {
 
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
+    const IN_OBJECT_ADDRESS_OFFSET: isize = 0;
 
     fn copy(
         from: ObjectReference,
@@ -70,16 +71,6 @@ impl ObjectModel<Art> for ArtObjectModel {
 
     fn ref_to_header(object: ObjectReference) -> Address {
         object.to_raw_address()
-    }
-
-    fn ref_to_address(object: ObjectReference) -> Address {
-        Self::ref_to_object_start(object)
-    }
-
-    fn address_to_ref(addr: Address) -> ObjectReference {
-        debug_assert!(!addr.is_zero());
-        // SAFETY: We've checked that addr is not zero above
-        unsafe { ObjectReference::from_raw_address_unchecked(addr) }
     }
 
     fn dump_object(_object: ObjectReference) {
