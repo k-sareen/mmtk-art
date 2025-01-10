@@ -16,6 +16,7 @@ use crate::{
         ArtCollection,
         GcThreadKind,
     },
+    gc_trigger::ArtTriggerInit,
     object_model::ArtObjectModel,
     reference_glue::ArtReferenceGlue,
     scanning::ArtScanning,
@@ -72,6 +73,8 @@ pub(crate) mod abi;
 pub mod api;
 /// Module which implements `Collection` trait
 pub mod collection;
+/// Module which implements ART's GC trigger
+pub mod gc_trigger;
 /// Module which implements `ObjectModel` trait
 pub mod object_model;
 /// Module which implements efficient object scanning
@@ -105,6 +108,8 @@ pub static IS_MMTK_INITIALIZED: AtomicBool = AtomicBool::new(false);
 pub static ART_POINTER_SIZE: AtomicUsize = AtomicUsize::new(std::mem::size_of::<usize>());
 
 lazy_static! {
+    /// ART GC trigger initialization parameters
+    static ref TRIGGER_INIT: Mutex<ArtTriggerInit> = Mutex::new(ArtTriggerInit::default());
     /// MMTk builder instance
     pub static ref BUILDER: Mutex<MMTKBuilder> = Mutex::new(MMTKBuilder::new());
     /// The actual MMTk instance
@@ -162,7 +167,9 @@ fn decompress(v: u32) -> Option<ObjectReference> {
 }
 
 fn set_vm_layout(builder: &mut MMTKBuilder) {
-    let max_heap_size = builder.options.gc_trigger.max_heap_size();
+    let max_heap_size = {
+        TRIGGER_INIT.lock().unwrap().capacity
+    };
     // Android doesn't really allow setting heap sizes > 800 MB on the
     // command-line (so actually > 1600 MB as they double the command-line
     // argument for the actual heap size)

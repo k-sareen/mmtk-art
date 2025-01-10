@@ -6,6 +6,7 @@ use crate::{
 use mmtk::{
     util::{
         alloc::AllocationError,
+        heap::GCTriggerPolicy,
         opaque_pointer::*,
     },
     vm::{
@@ -78,6 +79,22 @@ impl Collection<Art> for ArtCollection {
         // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).throw_out_of_memory_error)(tls, err_kind);
+        }
+    }
+
+    fn create_gc_trigger() -> Box<dyn GCTriggerPolicy<Art>> {
+        use crate::{TRIGGER_INIT, gc_trigger::ArtTrigger};
+        {
+            let trigger = TRIGGER_INIT.lock().unwrap();
+            Box::new(ArtTrigger::new(
+                trigger.min_free,
+                trigger.max_free,
+                trigger.initial_size,
+                trigger.capacity,
+                trigger.growth_limit,
+                trigger.target_utilization,
+                trigger.foreground_heap_growth_multiplier,
+            ))
         }
     }
 }

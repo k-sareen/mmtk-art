@@ -11,6 +11,7 @@ use crate::{
     RustAllocatedRegionBuffer,
     RustObjectReferenceBuffer,
     SINGLETON,
+    TRIGGER_INIT,
     UPCALLS,
 };
 #[cfg(target_os = "android")]
@@ -100,15 +101,33 @@ pub extern "C" fn mmtk_set_runtime_pointer_size(pointer_size: usize) {
     crate::ART_POINTER_SIZE.store(pointer_size, Ordering::Relaxed);
 }
 
-/// Set the min and max heap size
+/// Set the min, max, and other heap size parameters
 #[no_mangle]
-pub extern "C" fn mmtk_set_heap_size(min: usize, max: usize) -> bool {
+pub extern "C" fn mmtk_set_heap_size(
+    min: usize,
+    max: usize,
+    growth_limit: usize,
+    target_utilization: f64,
+    min_free: usize,
+    max_free: usize,
+    foreground_heap_growth_multiplier: f64,
+) -> bool {
     use mmtk::util::options::GCTriggerSelector;
     let mut builder = BUILDER.lock().unwrap();
+    {
+        let mut trigger = TRIGGER_INIT.lock().unwrap();
+        trigger.min_free = min_free;
+        trigger.max_free = max_free;
+        trigger.initial_size = min;
+        trigger.capacity = max;
+        trigger.growth_limit = growth_limit;
+        trigger.target_utilization = target_utilization;
+        trigger.foreground_heap_growth_multiplier = foreground_heap_growth_multiplier;
+    }
     let policy = if min == max {
         GCTriggerSelector::FixedHeapSize(min)
     } else {
-        GCTriggerSelector::DynamicHeapSize(min, max)
+        GCTriggerSelector::Delegated
     };
     builder.options.gc_trigger.set(policy)
 }
@@ -148,6 +167,30 @@ pub extern "C" fn mmtk_clamp_max_heap_size(max: usize) -> bool {
     // SAFETY: Assumes mmtk is valid and we are the only one accessing it
     let mmtk_mut: &mut mmtk::MMTK<Art> = unsafe { std::mem::transmute(mmtk) };
     mmtk_mut.clamp_max_heap_size(max)
+}
+
+/// Inform MMTk if the current runtime is jank perceptible or not
+#[no_mangle]
+pub extern "C" fn mmtk_set_is_jank_perceptible(is_jank_perceptible: bool) {
+    SINGLETON.set_is_jank_perceptible(is_jank_perceptible);
+}
+
+/// Get MMTk to grow the heap if the runtime is jank perceptible
+#[no_mangle]
+pub extern "C" fn mmtk_grow_heap_on_jank_perceptible_switch() {
+    SINGLETON.grow_heap_size_for_event()
+}
+
+/// Clamp the capacity to the growth limit
+#[no_mangle]
+pub extern "C" fn mmtk_clamp_growth_limit() {
+    SINGLETON.clamp_growth_limit()
+}
+
+/// Clear the growth limit to the capacity
+#[no_mangle]
+pub extern "C" fn mmtk_clear_growth_limit() {
+    SINGLETON.clear_growth_limit()
 }
 
 /// Start a GC Worker thread. We trust the `worker` pointer is valid
@@ -413,7 +456,7 @@ pub extern "C" fn mmtk_is_object_movable(object: Option<ObjectReference>) -> boo
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_forwarded(object: Option<ObjectReference>) -> bool {
     if let Some(obj) = object {
-        obj.get_potential_forwarded_object::<Art>().is_some()
+        !obj.get_potential_forwarded_object::<Art>().is_zero()
     } else {
         false
     }

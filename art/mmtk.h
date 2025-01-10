@@ -191,8 +191,15 @@ void mmtk_initialize_collection(VMThread tls);
  *
  * @param min minimum heap size
  * @param max maximum heap size
+ * @param growth_limit the soft maximum heap size
+ * @param target_utilization the target utilization of the heap
+ * @param min_free the minimum free space in the heap
+ * @param max_free the maximum free space in the heap
+ * @param foreground_heap_growth_multiplier the multiplier for foreground heap growth
  */
-void mmtk_set_heap_size(size_t min, size_t max);
+void mmtk_set_heap_size(size_t min, size_t max, size_t growth_limit,
+                        double target_utilization, size_t min_free,
+                        size_t max_free, double foreground_heap_growth_multiplier);
 
 /**
  * Clamp the max heap size for target application
@@ -201,6 +208,28 @@ void mmtk_set_heap_size(size_t min, size_t max);
  * @return if the max heap size was clamped
  */
 bool mmtk_clamp_max_heap_size(size_t max);
+
+/**
+ * Inform MMTk if the current runtime is jank perceptible or not
+ *
+ * @param is_jank_perceptible is the current runtime jank perceptible?
+ */
+void mmtk_set_is_jank_perceptible(bool is_jank_perceptible);
+
+/**
+ * Get MMTk to grow the heap if the runtime is jank perceptible
+ */
+void mmtk_grow_heap_on_jank_perceptible_switch();
+
+/**
+ * Clamp the capacity to the growth limit
+ */
+void mmtk_clamp_growth_limit();
+
+/**
+ * Clear the growth limit to the capacity
+ */
+void mmtk_clear_growth_limit();
 
 /**
  * Get the heap start
