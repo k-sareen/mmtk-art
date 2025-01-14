@@ -36,6 +36,7 @@ rust_ffi_shared {
     srcs: ["mmtk/src/lib.rs"],
     include_dirs: ["art"],
     rustlibs: [
+        "libatrace_rust",
         "liblazy_static",
         "liblibc",
         "libmemoffset",

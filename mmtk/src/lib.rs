@@ -166,6 +166,11 @@ fn decompress(v: u32) -> Option<ObjectReference> {
     }
 }
 
+/// ATrace heap size in KB. Expects heap size to be provided in pages.
+fn atrace_heap_size(heap_size: usize) {
+    atrace::atrace_int(atrace::AtraceTag::Dalvik, "Heap size (KB)", (heap_size << 2) as i32);
+}
+
 fn set_vm_layout(builder: &mut MMTKBuilder) {
     let max_heap_size = {
         TRIGGER_INIT.lock().unwrap().capacity

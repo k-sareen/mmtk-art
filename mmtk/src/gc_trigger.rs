@@ -159,6 +159,7 @@ impl ArtTrigger {
         let mut target_size: usize;
 
         let reserved_pages = mmtk.get_plan().get_reserved_pages();
+        crate::atrace_heap_size(reserved_pages);
         let multiplier = self.get_heap_growth_multiplier(mmtk.is_jank_perceptible());
         if crate::api::mmtk_is_nursery_collection() {
             let adjusted_max_free = (self.max_free as f64 * multiplier) as usize;
