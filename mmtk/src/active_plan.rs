@@ -42,12 +42,11 @@ impl ActivePlan<Art> for ArtActivePlan {
     }
 
     fn vm_trace_object<Q: ObjectQueue>(
-        queue: &mut Q,
+        _queue: &mut Q,
         object: ObjectReference,
         _worker: &mut GCWorker<Art>,
     ) -> ObjectReference {
-        queue.enqueue(object);
-        object
+        unreachable!("VM trace object {} is not supported for ART", object);
     }
 }
 
