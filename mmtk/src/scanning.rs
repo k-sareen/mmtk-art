@@ -90,58 +90,59 @@ impl Scanning<Art> for ArtScanning {
             unsafe { ((*UPCALLS).sweep_system_weaks)() };
             false
         } else {
+            let tls = worker.tls;
             // Always clear soft references if we are the Zygote process
             let clear_soft_references = crate::api::mmtk_is_emergency_collection() || crate::api::mmtk_is_zygote_process();
             let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
             match *current_phase {
                 RefProcessingPhase::Phase1 => {
-                    // SAFETY: Assumes upcalls is valid
-                    unsafe {
-                        ((*UPCALLS).process_references)(
-                            worker.tls,
-                            TraceObjectClosure::from_rust_closure(&mut |object| {
-                                tracer_context.with_tracer(worker, |tracer| {
+                    tracer_context.with_tracer(worker, |tracer| {
+                        // SAFETY: Assumes upcalls is valid
+                        unsafe {
+                            ((*UPCALLS).process_references)(
+                                tls,
+                                TraceObjectClosure::from_rust_closure(&mut |object| {
                                     tracer.trace_object(object)
-                                })
-                            }),
-                            RefProcessingPhase::Phase1,
-                            clear_soft_references,
-                        );
-                    }
+                                }),
+                                RefProcessingPhase::Phase1,
+                                clear_soft_references,
+                            );
+                        }
+                    });
                     *current_phase = RefProcessingPhase::Phase2;
                     true
                 },
                 RefProcessingPhase::Phase2 => {
-                    // SAFETY: Assumes upcalls is valid
-                    unsafe {
-                        ((*UPCALLS).process_references)(
-                            worker.tls,
-                            TraceObjectClosure::from_rust_closure(&mut |object| {
-                                tracer_context.with_tracer(worker, |tracer| {
+                    tracer_context.with_tracer(worker, |tracer| {
+                        // SAFETY: Assumes upcalls is valid
+                        unsafe {
+                            ((*UPCALLS).process_references)(
+                                tls,
+                                TraceObjectClosure::from_rust_closure(&mut |object| {
                                     tracer.trace_object(object)
-                                })
-                            }),
-                            RefProcessingPhase::Phase2,
-                            clear_soft_references,
-                        );
-                    }
+                                }),
+                                RefProcessingPhase::Phase2,
+                                clear_soft_references,
+                            );
+                        }
+                    });
                     *current_phase = RefProcessingPhase::Phase3;
                     true
                 },
                 RefProcessingPhase::Phase3 => {
-                    // SAFETY: Assumes upcalls is valid
-                    unsafe {
-                        ((*UPCALLS).process_references)(
-                            worker.tls,
-                            TraceObjectClosure::from_rust_closure(&mut |object| {
-                                tracer_context.with_tracer(worker, |tracer| {
+                    tracer_context.with_tracer(worker, |tracer| {
+                        // SAFETY: Assumes upcalls is valid
+                        unsafe {
+                            ((*UPCALLS).process_references)(
+                                tls,
+                                TraceObjectClosure::from_rust_closure(&mut |object| {
                                     tracer.trace_object(object)
-                                })
-                            }),
-                            RefProcessingPhase::Phase3,
-                            clear_soft_references,
-                        );
-                    }
+                                }),
+                                RefProcessingPhase::Phase3,
+                                clear_soft_references,
+                            );
+                        }
+                    });
                     *current_phase = RefProcessingPhase::Phase1;
                     false
                 },
