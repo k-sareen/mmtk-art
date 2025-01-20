@@ -655,7 +655,8 @@ impl Class {
         if !raw_is_aligned(size, 8_usize) && num_64bit_static_fields > 0_u32 {
             let mut gap: u32 = 8_u32 - (size & 0x7) as u32;
             size += gap as usize; // will be padded
-                                  // Shuffle 4-byte fields forward.
+
+            // Shuffle 4-byte fields forward.
             while gap >= std::mem::size_of::<u32>() as u32 && num_32bit_static_fields != 0_u32 {
                 num_32bit_static_fields -= 1_u32;
                 gap -= std::mem::size_of::<u32>() as u32;
