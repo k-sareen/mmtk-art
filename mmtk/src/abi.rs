@@ -1,17 +1,9 @@
-use crate::{
-    ArtObjectModel,
-    ArtSlot,
-};
+use crate::{ArtObjectModel, ArtSlot};
 use memoffset::offset_of;
 use mmtk::{
     util::{
-        conversions::{
-            raw_align_up,
-            raw_is_aligned,
-        },
-        Address,
-        ObjectReference,
-        OpaquePointer,
+        conversions::{raw_align_up, raw_is_aligned},
+        Address, ObjectReference, OpaquePointer,
     },
     vm::*,
 };
@@ -272,15 +264,15 @@ pub struct Class {
     /// runtime such as arrays and primitive classes).
     pub dex_cache: ArtHeapReference<DexCache>,
     /// Extraneous class data that is not always needed.
-    pub ext_data: ArtHeapReference<Object>,         // ClassExt
+    pub ext_data: ArtHeapReference<Object>, // ClassExt
     /// The interface table (iftable)
-    pub iftable: ArtHeapReference<Object>,          // IfTable
+    pub iftable: ArtHeapReference<Object>, // IfTable
     /// Descriptor for the class such as "java.lang.Class" or "[C". Lazily initialized by ComputeName
-    pub name: ArtHeapReference<Object>,             // String
+    pub name: ArtHeapReference<Object>, // String
     /// The superclass, or null if this is java.lang.Object or a primitive type.
     pub super_class: ArtHeapReference<Class>,
     /// Virtual method table (vtable), for use by "invoke-virtual".
-    pub vtable: ArtHeapReference<Object>,           // PointerArray
+    pub vtable: ArtHeapReference<Object>, // PointerArray
     /// Instance fields. These describe the layout of the contents of an Object.
     pub ifields: u64,
     /// Pointer to an ArtMethod length-prefixed array.
@@ -398,16 +390,15 @@ impl Class {
     pub const kArrayComponentSizeShiftShift: u32 = 30;
     /// Combination of flags to figure out if the class is either the weak/soft/phantom/finalizer
     /// reference class.
-    pub const kClassFlagReference: u32 =
-        Class::kClassFlagSoftReference |
-        Class::kClassFlagWeakReference |
-        Class::kClassFlagFinalizerReference |
-        Class::kClassFlagPhantomReference;
+    pub const kClassFlagReference: u32 = Class::kClassFlagSoftReference
+        | Class::kClassFlagWeakReference
+        | Class::kClassFlagFinalizerReference
+        | Class::kClassFlagPhantomReference;
 
     /// Interface
-    pub const kAccInterface: u32 = 0x0200;  // class, ic
+    pub const kAccInterface: u32 = 0x0200; // class, ic
     /// Abstract
-    pub const kAccAbstract: u32 = 0x0400;   // class, method, ic
+    pub const kAccAbstract: u32 = 0x0400; // class, method, ic
 
     /// 'reference_instance_offsets' may contain up to 31 reference offsets. If
     /// more bits are required, then we set the most-significant bit and store the
@@ -446,7 +437,8 @@ impl Class {
             let mut total_reference_instance_fields: usize = 0;
             let mut super_class = self;
             loop {
-                total_reference_instance_fields += super_class.num_reference_instance_fields as usize;
+                total_reference_instance_fields +=
+                    super_class.num_reference_instance_fields as usize;
                 if super_class.super_class.reference.is_none() {
                     break;
                 } else {
@@ -554,7 +546,10 @@ impl Class {
 
     /// Is the Class instantiable and not an array?
     pub fn is_instantiable_non_array(&self) -> bool {
-        !self.is_primitive() && !self.is_interface() && !self.is_abstract() && !self.is_array_class()
+        !self.is_primitive()
+            && !self.is_interface()
+            && !self.is_abstract()
+            && !self.is_array_class()
     }
 
     /// Get the status of the Class.
@@ -586,8 +581,9 @@ impl Class {
         let size_shift = (self.primitive_type >> Class::kPrimitiveTypeSizeShiftShift) as usize;
         debug_assert_eq!(
             size_shift,
-            ArtPrimitive::component_size_shift(
-                ArtPrimitive::from_u32(self.primitive_type & Class::kPrimitiveTypeMask)),
+            ArtPrimitive::component_size_shift(ArtPrimitive::from_u32(
+                self.primitive_type & Class::kPrimitiveTypeMask
+            )),
         );
         size_shift
     }
@@ -602,7 +598,17 @@ impl Class {
     pub fn get_first_reference_static_fields_offset(&self, ptr_size: usize) -> usize {
         debug_assert!(self.is_resolved());
         if self.should_have_embedded_vtable() {
-            Class::compute_class_size(true, self.get_embedded_vtable_length(), 0, 0, 0, 0, 0, 0, ptr_size)
+            Class::compute_class_size(
+                true,
+                self.get_embedded_vtable_length(),
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                ptr_size,
+            )
         } else {
             std::mem::size_of::<Class>()
         }
@@ -640,7 +646,7 @@ impl Class {
         // Space used by the embedded vtable.
         if has_embedded_vtable {
             size = raw_align_up(size + std::mem::size_of::<u32>(), ptr_size);
-            size += ptr_size;   // size of pointer to IMT
+            size += ptr_size; // size of pointer to IMT
             size += num_vtable_entries as usize * ptr_size;
         }
 
@@ -648,8 +654,8 @@ impl Class {
         size += num_ref_static_fields as usize * ART_HEAP_REFERENCE_SIZE;
         if !raw_is_aligned(size, 8_usize) && num_64bit_static_fields > 0_u32 {
             let mut gap: u32 = 8_u32 - (size & 0x7) as u32;
-            size += gap as usize;  // will be padded
-            // Shuffle 4-byte fields forward.
+            size += gap as usize; // will be padded
+                                  // Shuffle 4-byte fields forward.
             while gap >= std::mem::size_of::<u32>() as u32 && num_32bit_static_fields != 0_u32 {
                 num_32bit_static_fields -= 1_u32;
                 gap -= std::mem::size_of::<u32>() as u32;
@@ -669,9 +675,9 @@ impl Class {
         // Guaranteed to be at least 4 byte aligned. No need for further alignments.
         // Space used for primitive static fields.
         size += num_8bit_static_fields as usize * std::mem::size_of::<u8>()
-                + num_16bit_static_fields as usize * std::mem::size_of::<u16>()
-                + num_32bit_static_fields as usize * std::mem::size_of::<u32>()
-                + num_64bit_static_fields as usize * std::mem::size_of::<u64>();
+            + num_16bit_static_fields as usize * std::mem::size_of::<u16>()
+            + num_32bit_static_fields as usize * std::mem::size_of::<u32>()
+            + num_64bit_static_fields as usize * std::mem::size_of::<u64>();
 
         // Space used by reference-offset bitmap.
         if num_ref_bitmap_entries > 0 {
@@ -856,7 +862,7 @@ pub struct DexCache {
     /// The ClassLoader that this DexCache is associated with
     pub class_loader: ArtHeapReference<ClassLoader>,
     /// The location of the dex file
-    pub location: ArtHeapReference<Object>,     // String
+    pub location: ArtHeapReference<Object>, // String
     /// const DexFile*
     pub dex_file: u64,
     /// Array of call sites

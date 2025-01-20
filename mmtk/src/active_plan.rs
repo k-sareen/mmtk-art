@@ -1,19 +1,12 @@
-use crate::{
-    Art,
-    MutatorClosure,
-    UPCALLS,
-};
+use crate::{Art, MutatorClosure, UPCALLS};
 use mmtk::{
-    Mutator,
-    util::{opaque_pointer::*, ObjectReference},
     plan::ObjectQueue,
     scheduler::GCWorker,
+    util::{opaque_pointer::*, ObjectReference},
     vm::ActivePlan,
+    Mutator,
 };
-use std::{
-    collections::VecDeque,
-    marker::PhantomData,
-};
+use std::{collections::VecDeque, marker::PhantomData};
 
 /// Implements active GC plan trait
 pub struct ArtActivePlan;

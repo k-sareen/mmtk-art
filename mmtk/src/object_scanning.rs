@@ -1,27 +1,14 @@
 use crate::{
     abi::{
-        get_field_slot,
-        ART_HEAP_REFERENCE_SIZE,
-        Class,
-        ClassLoader,
-        Object,
-        ObjectArray,
-        OBJECT_HEADER_SIZE,
-        Reference,
-        DexCache, ArtHeapReference,
+        get_field_slot, ArtHeapReference, Class, ClassLoader, DexCache, Object, ObjectArray,
+        Reference, ART_HEAP_REFERENCE_SIZE, OBJECT_HEADER_SIZE,
     },
     likely,
     scanning::to_scan_object_closure,
-    unlikely,
-    ArtObjectWithNativeRootsType,
-    ArtSlot,
-    UPCALLS,
+    unlikely, ArtObjectWithNativeRootsType, ArtSlot, UPCALLS,
 };
 use mmtk::{
-    util::{
-        opaque_pointer::VMWorkerThread,
-        ObjectReference,
-    },
+    util::{opaque_pointer::VMWorkerThread, ObjectReference},
     vm::*,
 };
 use std::sync::atomic::Ordering;
@@ -52,8 +39,10 @@ impl Object {
             let bitmap_num_words = ref_offsets & !Class::kVisitReferencesSlowpathMask;
             let klass_obj: &Object = klass.into();
             let klass_objref: ObjectReference = klass_obj.into();
-            let overflow_bitmap: *const u32 = (klass_objref.to_raw_address().as_usize() + klass.class_size as usize
-                - (bitmap_num_words * (std::mem::size_of::<u32>() as u32)) as usize) as *const u32;
+            let overflow_bitmap: *const u32 = (klass_objref.to_raw_address().as_usize()
+                + klass.class_size as usize
+                - (bitmap_num_words * (std::mem::size_of::<u32>() as u32)) as usize)
+                as *const u32;
             for i in 0..bitmap_num_words {
                 visit_one_word(
                     OBJECT_HEADER_SIZE + i * ART_HEAP_REFERENCE_SIZE as u32 * 32_u32,
@@ -100,7 +89,9 @@ impl Class {
         let num_reference_fields = self.num_reference_static_fields;
         if num_reference_fields > 0_u32 {
             let obj: &Object = self.into();
-            let mut field_offset = self.get_first_reference_static_fields_offset(crate::ART_POINTER_SIZE.load(Ordering::Relaxed));
+            let mut field_offset = self.get_first_reference_static_fields_offset(
+                crate::ART_POINTER_SIZE.load(Ordering::Relaxed),
+            );
             for _i in 0..num_reference_fields {
                 debug_assert_ne!(field_offset, Object::class_offset());
                 let field = get_field_slot(obj, field_offset as i32);
@@ -162,10 +153,7 @@ impl DexCache {
 
 impl ClassLoader {
     /// Visit Classes in an instance of a java.lang.ClassLoader object.
-    pub fn visit_classes<SV: SlotVisitor<ArtSlot>>(
-        object: ObjectReference,
-        slot_visitor: &mut SV,
-    ) {
+    pub fn visit_classes<SV: SlotVisitor<ArtSlot>>(object: ObjectReference, slot_visitor: &mut SV) {
         // XXX(kunals): Note that we visit the instance fields in the scan_object function itself
         // SAFETY: Assumes upcalls is valid
         unsafe {

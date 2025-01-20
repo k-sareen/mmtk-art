@@ -7,15 +7,9 @@ extern crate lazy_static;
 extern crate log;
 
 use crate::{
-    abi::{
-        ArtHeapReference,
-        Class,
-    },
+    abi::{ArtHeapReference, Class},
     active_plan::ArtActivePlan,
-    collection::{
-        ArtCollection,
-        GcThreadKind,
-    },
+    collection::{ArtCollection, GcThreadKind},
     gc_trigger::ArtTriggerInit,
     object_model::ArtObjectModel,
     reference_glue::ArtReferenceGlue,
@@ -24,51 +18,35 @@ use crate::{
 use mmtk::{
     util::{
         alloc::AllocationError,
-        conversions::{
-            chunk_align_down,
-            chunk_align_up,
-        },
-        heap::vm_layout::{
-            BYTES_IN_CHUNK,
-            VMLayout,
-        },
+        conversions::{chunk_align_down, chunk_align_up},
+        heap::vm_layout::{VMLayout, BYTES_IN_CHUNK},
         opaque_pointer::*,
-        Address,
-        ObjectReference,
+        Address, ObjectReference,
     },
     vm::{
-        slot::{
-            MemorySlice,
-            Slot,
-        },
+        slot::{MemorySlice, Slot},
         VMBinding,
     },
-    MMTK,
-    MMTKBuilder,
-    Mutator,
+    MMTKBuilder, Mutator, MMTK,
 };
 use std::{
     ops::Range,
     ptr::null_mut,
     sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Mutex,
-        atomic::{
-            AtomicBool,
-            AtomicUsize,
-            Ordering,
-        },
-    }
+    },
 };
 
 /// log_2 of how many bytes in an integer
-const LOG_BYTES_IN_INT:  u8 = 2;
+const LOG_BYTES_IN_INT: u8 = 2;
 /// log_2 of how many bytes in a slot
 const LOG_BYTES_IN_SLOT: u8 = 2;
 
-/// Module which implements `ActivePlan` trait
-pub mod active_plan;
 /// Module which implements the Android C++ ABI
 pub(crate) mod abi;
+/// Module which implements `ActivePlan` trait
+pub mod active_plan;
 /// Module which implements the user-facing API
 pub mod api;
 /// Module which implements `Collection` trait
@@ -158,23 +136,21 @@ fn decompress(v: u32) -> Option<ObjectReference> {
         None
     } else {
         // SAFETY: Assumes v is valid
-        unsafe {
-            ObjectReference::from_raw_address(
-                Address::from_usize(v as usize)
-            )
-        }
+        unsafe { ObjectReference::from_raw_address(Address::from_usize(v as usize)) }
     }
 }
 
 /// ATrace heap size in KB. Expects heap size to be provided in pages.
 fn atrace_heap_size(heap_size: usize) {
-    atrace::atrace_int(atrace::AtraceTag::Dalvik, "Heap size (KB)", (heap_size << 2) as i32);
+    atrace::atrace_int(
+        atrace::AtraceTag::Dalvik,
+        "Heap size (KB)",
+        (heap_size << 2) as i32,
+    );
 }
 
 fn set_vm_layout(builder: &mut MMTKBuilder) {
-    let max_heap_size = {
-        TRIGGER_INIT.lock().unwrap().capacity
-    };
+    let max_heap_size = { TRIGGER_INIT.lock().unwrap().capacity };
     // Android doesn't really allow setting heap sizes > 800 MB on the
     // command-line (so actually > 1600 MB as they double the command-line
     // argument for the actual heap size)
@@ -344,10 +320,7 @@ pub struct ArtUpcalls {
     /// Get the size of the given object
     pub size_of: extern "C" fn(object: ObjectReference) -> usize,
     /// Scan object for references
-    pub scan_object: extern "C" fn(
-        object: ObjectReference,
-        closure: ScanObjectClosure,
-    ),
+    pub scan_object: extern "C" fn(object: ObjectReference, closure: ScanObjectClosure),
     /// Scan an object for native roots
     pub scan_native_roots: extern "C" fn(
         object: ObjectReference,
@@ -365,11 +338,7 @@ pub struct ArtUpcalls {
     /// Block mutator thread for GC
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
     /// Spawn GC thread with type `kind`
-    pub spawn_gc_thread: extern "C" fn(
-        tls: VMThread,
-        kind: GcThreadKind,
-        ctx: *mut libc::c_void
-    ),
+    pub spawn_gc_thread: extern "C" fn(tls: VMThread, kind: GcThreadKind, ctx: *mut libc::c_void),
     /// Stop all mutator threads
     pub suspend_mutators: extern "C" fn(tls: VMWorkerThread),
     /// Resume all mutator threads
@@ -423,10 +392,8 @@ impl MutatorClosure {
         }
     }
 
-    extern "C" fn call_rust_closure<F>(
-        mutator: *mut Mutator<Art>,
-        callback_ptr: *mut libc::c_void,
-    ) where
+    extern "C" fn call_rust_closure<F>(mutator: *mut Mutator<Art>, callback_ptr: *mut libc::c_void)
+    where
         F: FnMut(&'static mut Mutator<Art>),
     {
         // SAFETY: Assumes callback is valid
@@ -502,10 +469,7 @@ pub struct SlotsClosure {
 #[repr(C)]
 pub struct ScanObjectClosure {
     /// The closure to invoke
-    pub func: extern "C" fn(
-        slot: ArtSlot,
-        data: *mut libc::c_void,
-    ),
+    pub func: extern "C" fn(slot: ArtSlot, data: *mut libc::c_void),
     /// The Rust context associated with the closure
     pub data: *const libc::c_void,
 }
@@ -515,10 +479,7 @@ pub struct ScanObjectClosure {
 #[repr(C)]
 pub struct TraceObjectClosure {
     /// The closure to invoke
-    pub func: extern "C" fn(
-        object: ObjectReference,
-        data: *mut libc::c_void,
-    ) -> ObjectReference,
+    pub func: extern "C" fn(object: ObjectReference, data: *mut libc::c_void) -> ObjectReference,
     /// The Rust context associated with the closure
     pub data: *const libc::c_void,
 }

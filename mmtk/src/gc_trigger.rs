@@ -1,19 +1,12 @@
 //! Implements the ART GC trigger.
 
-use crate::{
-    unlikely,
-    Art,
-};
+use crate::{unlikely, Art};
 use mmtk::{
     util::{
         constants::LOG_BYTES_IN_PAGE,
-        heap::{
-            GCTriggerPolicy,
-            SpaceStats,
-        },
+        heap::{GCTriggerPolicy, SpaceStats},
     },
-    MMTK,
-    Plan,
+    Plan, MMTK,
 };
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -105,7 +98,8 @@ impl ArtTrigger {
         if target_footprint > self.growth_limit.load(Ordering::Relaxed) {
             target_footprint = self.growth_limit.load(Ordering::Relaxed);
         }
-        self.target_footprint.store(target_footprint, Ordering::Relaxed);
+        self.target_footprint
+            .store(target_footprint, Ordering::Relaxed);
     }
 
     #[allow(dead_code)]
@@ -113,14 +107,16 @@ impl ArtTrigger {
 
     /// Set the capacity to the growth limit, thereby decreasing the available heap space.
     fn clamp_growth_limit_inner(&self) {
-        self.capacity.store(self.growth_limit.load(Ordering::Relaxed), Ordering::Relaxed);
+        self.capacity
+            .store(self.growth_limit.load(Ordering::Relaxed), Ordering::Relaxed);
     }
 
     /// Set the growth limit to the capacity, thereby increasing the available heap space.
     fn clear_growth_limit(&self) {
         let capacity = self.capacity.load(Ordering::Relaxed);
         let growth_limit = self.growth_limit.load(Ordering::Relaxed);
-        if self.target_footprint.load(Ordering::Relaxed) == growth_limit && growth_limit < capacity {
+        if self.target_footprint.load(Ordering::Relaxed) == growth_limit && growth_limit < capacity
+        {
             self.target_footprint.store(capacity, Ordering::Relaxed);
             self.set_concurrent_start_pages();
         }
@@ -167,7 +163,10 @@ impl ArtTrigger {
                 target_size = reserved_pages + adjusted_max_free;
                 grow_pages = self.max_free;
             } else {
-                target_size = std::cmp::max(reserved_pages, self.target_footprint.load(Ordering::Relaxed));
+                target_size = std::cmp::max(
+                    reserved_pages,
+                    self.target_footprint.load(Ordering::Relaxed),
+                );
                 grow_pages = 0_usize;
             }
         } else {
@@ -185,13 +184,15 @@ impl ArtTrigger {
         self.set_ideal_footprint(target_size);
         let min_foreground_target_footprint = if multiplier <= 1.0 && grow_pages > 0 {
             std::cmp::min(
-                reserved_pages + (grow_pages as f64 * self.foreground_heap_growth_multiplier) as usize,
+                reserved_pages
+                    + (grow_pages as f64 * self.foreground_heap_growth_multiplier) as usize,
                 self.growth_limit.load(Ordering::Relaxed),
             )
         } else {
             0_usize
         };
-        self.min_foreground_target_footprint.store(min_foreground_target_footprint, Ordering::Relaxed);
+        self.min_foreground_target_footprint
+            .store(min_foreground_target_footprint, Ordering::Relaxed);
 
         // if mmtk.is_gc_concurrent() {
         // }
@@ -205,7 +206,8 @@ impl GCTriggerPolicy<Art> for ArtTrigger {
 
     fn on_gc_start(&self, mmtk: &'static MMTK<Art>) {
         let reserved_pages = mmtk.get_plan().get_reserved_pages();
-        self.reserved_pages_before_gc.store(reserved_pages, Ordering::Relaxed);
+        self.reserved_pages_before_gc
+            .store(reserved_pages, Ordering::Relaxed);
     }
 
     fn on_gc_end(&self, mmtk: &'static MMTK<Art>) {
@@ -235,13 +237,13 @@ impl GCTriggerPolicy<Art> for ArtTrigger {
             // if plan.is_concurrent() {
             //     return false;
             // }
-            if self.target_footprint.compare_exchange_weak(
-                old_target,
-                new_target,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ).is_ok() {
-                self.pending_allocation.fetch_sub(pending_allocation, Ordering::Relaxed);
+            if self
+                .target_footprint
+                .compare_exchange_weak(old_target, new_target, Ordering::Relaxed, Ordering::Relaxed)
+                .is_ok()
+            {
+                self.pending_allocation
+                    .fetch_sub(pending_allocation, Ordering::Relaxed);
                 break false;
             }
         };

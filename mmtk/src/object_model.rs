@@ -1,6 +1,6 @@
 use crate::{Art, UPCALLS};
 use mmtk::{
-    util::{Address, ObjectReference, copy::*},
+    util::{copy::*, Address, ObjectReference},
     vm::*,
 };
 
@@ -9,11 +9,16 @@ pub struct ArtObjectModel;
 
 impl ObjectModel<Art> for ArtObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
-    const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec = VMLocalForwardingPointerSpec::in_header(32);
-    const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec = VMLocalForwardingBitsSpec::in_header(0);
-    const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = VMLocalLOSMarkNurserySpec::side_first();
-    const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = VMLocalMarkBitSpec::side_after(Self::LOCAL_LOS_MARK_NURSERY_SPEC.as_spec());
-    const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec = VMLocalPinningBitSpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
+    const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
+        VMLocalForwardingPointerSpec::in_header(32);
+    const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
+        VMLocalForwardingBitsSpec::in_header(0);
+    const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec =
+        VMLocalLOSMarkNurserySpec::side_first();
+    const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec =
+        VMLocalMarkBitSpec::side_after(Self::LOCAL_LOS_MARK_NURSERY_SPEC.as_spec());
+    const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec =
+        VMLocalPinningBitSpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
 
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
@@ -79,8 +84,6 @@ impl ObjectModel<Art> for ArtObjectModel {
 
     fn is_object_sane(object: ObjectReference) -> bool {
         // SAFETY: Assumes upcalls is valid
-        unsafe {
-            ((*UPCALLS).is_valid_object)(object)
-        }
+        unsafe { ((*UPCALLS).is_valid_object)(object) }
     }
 }

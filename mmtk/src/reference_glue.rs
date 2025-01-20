@@ -1,6 +1,6 @@
 use crate::Art;
 use mmtk::{
-    util::{ObjectReference, opaque_pointer::VMWorkerThread},
+    util::{opaque_pointer::VMWorkerThread, ObjectReference},
     vm::ReferenceGlue,
 };
 

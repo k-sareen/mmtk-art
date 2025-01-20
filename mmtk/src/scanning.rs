@@ -1,24 +1,12 @@
 use crate::{
-    unlikely,
-    Art,
-    ArtSlot,
-    NodesClosure,
-    RustBuffer,
-    ScanObjectClosure,
-    SlotsClosure,
-    TraceObjectClosure,
-    RefProcessingPhase,
-    UPCALLS,
+    unlikely, Art, ArtSlot, NodesClosure, RefProcessingPhase, RustBuffer, ScanObjectClosure,
+    SlotsClosure, TraceObjectClosure, UPCALLS,
 };
 use mmtk::{
     scheduler::GCWorker,
-    Mutator,
-    util::{
-        Address,
-        ObjectReference,
-        opaque_pointer::VMWorkerThread,
-    },
+    util::{opaque_pointer::VMWorkerThread, Address, ObjectReference},
     vm::*,
+    Mutator,
 };
 use std::sync::Mutex;
 
@@ -46,7 +34,8 @@ impl Scanning<Art> for ArtScanning {
         _tls: VMWorkerThread,
         _mutator: &'static mut Mutator<Art>,
         _factory: impl RootsWorkFactory<ArtSlot>,
-    ) {}
+    ) {
+    }
 
     fn scan_vm_specific_roots(_tls: VMWorkerThread, mut factory: impl RootsWorkFactory<ArtSlot>) {
         // SAFETY: Assumes upcalls is valid
@@ -69,13 +58,14 @@ impl Scanning<Art> for ArtScanning {
         if unlikely(cfg!(feature = "simple_scan_object")) {
             // SAFETY: Assumes upcalls is valid
             unsafe {
-                ((*UPCALLS).scan_object)(
-                    object,
-                    to_scan_object_closure::<SV>(slot_visitor),
-                );
+                ((*UPCALLS).scan_object)(object, to_scan_object_closure::<SV>(slot_visitor));
             }
         } else {
-            crate::object_scanning::scan_object::</* kVisitNativeRoots= */ true, SV>(tls, object, slot_visitor)
+            crate::object_scanning::scan_object::</* kVisitNativeRoots= */ true, SV>(
+                tls,
+                object,
+                slot_visitor,
+            )
         }
     }
 
@@ -92,7 +82,8 @@ impl Scanning<Art> for ArtScanning {
         } else {
             let tls = worker.tls;
             // Always clear soft references if we are the Zygote process
-            let clear_soft_references = crate::api::mmtk_is_emergency_collection() || crate::api::mmtk_is_zygote_process();
+            let clear_soft_references =
+                crate::api::mmtk_is_emergency_collection() || crate::api::mmtk_is_zygote_process();
             let mut current_phase = CURRENT_WEAK_REF_PHASE.lock().unwrap();
             match *current_phase {
                 RefProcessingPhase::Phase1 => {
@@ -111,7 +102,7 @@ impl Scanning<Art> for ArtScanning {
                     });
                     *current_phase = RefProcessingPhase::Phase2;
                     true
-                },
+                }
                 RefProcessingPhase::Phase2 => {
                     tracer_context.with_tracer(worker, |tracer| {
                         // SAFETY: Assumes upcalls is valid
@@ -128,7 +119,7 @@ impl Scanning<Art> for ArtScanning {
                     });
                     *current_phase = RefProcessingPhase::Phase3;
                     true
-                },
+                }
                 RefProcessingPhase::Phase3 => {
                     tracer_context.with_tracer(worker, |tracer| {
                         // SAFETY: Assumes upcalls is valid
@@ -145,7 +136,7 @@ impl Scanning<Art> for ArtScanning {
                     });
                     *current_phase = RefProcessingPhase::Phase1;
                     false
-                },
+                }
             }
         }
     }
@@ -178,7 +169,9 @@ extern "C" fn report_nodes_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
 ) -> RustBuffer {
     if !ptr.is_null() {
         // SAFETY: Assumes ptr is valid
-        let buf = unsafe { Vec::<ObjectReference>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
+        let buf = unsafe {
+            Vec::<ObjectReference>::from_raw_parts(std::mem::transmute(ptr), length, capacity)
+        };
         // SAFETY: Assumes factory_ptr is valid
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
         factory.create_process_pinning_roots_work(buf);
@@ -204,7 +197,8 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
 ) -> RustBuffer {
     if !ptr.is_null() {
         // SAFETY: Assumes ptr is valid
-        let buf = unsafe { Vec::<ArtSlot>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
+        let buf =
+            unsafe { Vec::<ArtSlot>::from_raw_parts(std::mem::transmute(ptr), length, capacity) };
         // SAFETY: Assumes factory_ptr is valid
         let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
         factory.create_process_roots_work(buf);
@@ -222,7 +216,7 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
 /// Function that allows C/C++ code to invoke a `ScanObjectClosure` closure
 extern "C" fn scan_object_fn<SV: SlotVisitor<ArtSlot>>(
     slot: ArtSlot,
-    slot_visitor_ptr: *mut libc::c_void
+    slot_visitor_ptr: *mut libc::c_void,
 ) {
     // SAFETY: Assumes slot_visitor_ptr is valid
     let slot_visitor: &mut SV = unsafe { &mut *(slot_visitor_ptr as *mut SV) };
@@ -231,9 +225,7 @@ extern "C" fn scan_object_fn<SV: SlotVisitor<ArtSlot>>(
 
 /// Convert a `RootsWorkFactory` into a `NodesClosure`
 #[allow(unused)]
-pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtSlot>>(
-    factory: &mut F
-) -> NodesClosure {
+pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtSlot>>(factory: &mut F) -> NodesClosure {
     NodesClosure {
         func: report_nodes_and_renew_buffer::<F>,
         data: factory as *mut F as *mut libc::c_void,
@@ -241,9 +233,7 @@ pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtSlot>>(
 }
 
 /// Convert a `RootsWorkFactory` into a `SlotsClosure`
-pub(crate) fn to_slots_closure<F: RootsWorkFactory<ArtSlot>>(
-    factory: &mut F
-) -> SlotsClosure {
+pub(crate) fn to_slots_closure<F: RootsWorkFactory<ArtSlot>>(factory: &mut F) -> SlotsClosure {
     SlotsClosure {
         func: report_slots_and_renew_buffer::<F>,
         data: factory as *mut F as *mut libc::c_void,
@@ -252,7 +242,7 @@ pub(crate) fn to_slots_closure<F: RootsWorkFactory<ArtSlot>>(
 
 /// Convert an `SlotVisitor` to a `ScanObjectClosure`
 pub(crate) fn to_scan_object_closure<SV: SlotVisitor<ArtSlot>>(
-    slot_visitor: &mut SV
+    slot_visitor: &mut SV,
 ) -> ScanObjectClosure {
     ScanObjectClosure {
         func: scan_object_fn::<SV>,

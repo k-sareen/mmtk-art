@@ -1,21 +1,8 @@
-use crate::{
-    Art,
-    MutatorClosure,
-    UPCALLS,
-};
+use crate::{Art, MutatorClosure, UPCALLS};
 use mmtk::{
-    util::{
-        alloc::AllocationError,
-        heap::GCTriggerPolicy,
-        opaque_pointer::*,
-    },
-    vm::{
-        ActivePlan,
-        Collection,
-        GCThreadContext,
-    },
-    Mutator,
-    MutatorContext,
+    util::{alloc::AllocationError, heap::GCTriggerPolicy, opaque_pointer::*},
+    vm::{ActivePlan, Collection, GCThreadContext},
+    Mutator, MutatorContext,
 };
 
 /// Type of GC worker
@@ -59,10 +46,9 @@ impl Collection<Art> for ArtCollection {
 
     fn spawn_gc_thread(tls: VMThread, ctx: GCThreadContext<Art>) {
         let (ctx_ptr, kind) = match ctx {
-            GCThreadContext::Worker(w) => (
-                Box::into_raw(w) as *mut libc::c_void,
-                GcThreadKind::Worker,
-            ),
+            GCThreadContext::Worker(w) => {
+                (Box::into_raw(w) as *mut libc::c_void, GcThreadKind::Worker)
+            }
         };
         // SAFETY: Assumes upcalls is valid
         unsafe {
@@ -83,7 +69,7 @@ impl Collection<Art> for ArtCollection {
     }
 
     fn create_gc_trigger() -> Box<dyn GCTriggerPolicy<Art>> {
-        use crate::{TRIGGER_INIT, gc_trigger::ArtTrigger};
+        use crate::{gc_trigger::ArtTrigger, TRIGGER_INIT};
         {
             let trigger = TRIGGER_INIT.lock().unwrap();
             Box::new(ArtTrigger::new(
