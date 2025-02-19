@@ -2,35 +2,20 @@
 extern crate android_logger;
 
 use crate::{
-    Art,
-    ArtSlot,
-    ArtUpcalls,
-    BUILDER,
-    IS_MMTK_INITIALIZED,
-    LOG_BYTES_IN_SLOT,
-    RustAllocatedRegionBuffer,
-    RustObjectReferenceBuffer,
-    SINGLETON,
-    TRIGGER_INIT,
-    UPCALLS,
+    Art, ArtSlot, ArtUpcalls, RustAllocatedRegionBuffer, RustObjectReferenceBuffer, BUILDER,
+    IS_MMTK_INITIALIZED, LOG_BYTES_IN_SLOT, SINGLETON, TRIGGER_INIT, UPCALLS,
 };
 #[cfg(target_os = "android")]
 use android_logger::Config;
 use mmtk::{
-    AllocationSemantics,
-    Mutator,
-    MutatorContext,
     scheduler::GCWorker,
     util::{
-        alloc::{
-            AllocatorSelector,
-            BumpPointer,
-        },
+        alloc::{AllocatorSelector, BumpPointer},
         opaque_pointer::*,
         options::PlanSelector,
-        Address,
-        ObjectReference,
+        Address, ObjectReference,
     },
+    AllocationSemantics, Mutator, MutatorContext,
 };
 use std::sync::atomic::Ordering;
 
@@ -76,11 +61,7 @@ pub extern "C" fn mmtk_init(
 
         info!(
             "Initializing MMTk with{} Zygote space",
-            if !is_zygote_process {
-                "out"
-            } else {
-                ""
-            },
+            if !is_zygote_process { "out" } else { "" },
         );
     }
 
@@ -196,10 +177,7 @@ pub extern "C" fn mmtk_clear_growth_limit() {
 /// Start a GC Worker thread. We trust the `worker` pointer is valid
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub extern "C" fn mmtk_start_gc_worker_thread(
-    tls: VMWorkerThread,
-    worker: *mut GCWorker<Art>
-) {
+pub extern "C" fn mmtk_start_gc_worker_thread(tls: VMWorkerThread, worker: *mut GCWorker<Art>) {
     debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     // SAFETY: Assumes worker is valid
     let worker = unsafe { Box::from_raw(worker) };
@@ -299,7 +277,7 @@ pub extern "C" fn mmtk_alloc(
         size,
         align,
         offset,
-        allocator
+        allocator,
     )
 }
 
@@ -318,7 +296,7 @@ pub extern "C" fn mmtk_post_alloc(
         unsafe { &mut *mutator },
         object,
         size,
-        allocator
+        allocator,
     )
 }
 
@@ -328,33 +306,29 @@ pub extern "C" fn mmtk_post_alloc(
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
     mutator: *mut Mutator<Art>,
-    bump_pointer: BumpPointer
+    bump_pointer: BumpPointer,
 ) {
     debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
-    let selector = mmtk::memory_manager::get_allocator_mapping(
-        &SINGLETON,
-        AllocationSemantics::Default,
-    );
+    let selector =
+        mmtk::memory_manager::get_allocator_mapping(&SINGLETON, AllocationSemantics::Default);
     // We only match the default allocator, so the index is always 0
     match selector {
         AllocatorSelector::BumpPointer(0) => {
             // SAFETY: Assumes mutator is valid
             let default_allocator = unsafe {
-                (*mutator)
-                    .allocator_impl_mut::<mmtk::util::alloc::BumpAllocator<Art>>(selector)
+                (*mutator).allocator_impl_mut::<mmtk::util::alloc::BumpAllocator<Art>>(selector)
             };
             // Copy bump pointer values to the allocator in the mutator
             default_allocator.bump_pointer = bump_pointer;
-        },
+        }
         AllocatorSelector::Immix(0) => {
             // SAFETY: Assumes mutator is valid
             let default_allocator = unsafe {
-                (*mutator)
-                    .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
+                (*mutator).allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
             };
             // Copy bump pointer values to the allocator in the mutator
             default_allocator.bump_pointer = bump_pointer;
-        },
+        }
         // XXX(kunals): MarkCompact is currently unsupported due to the extra
         // header word that would need to be added to the object in the inline
         // fast-path
@@ -367,7 +341,10 @@ pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
         //     default_allocator.bump_allocator.bump_pointer = bump_pointer;
         // },
         _ => {
-            panic!("No support for thread-local allocation for selector {:?}", selector);
+            panic!(
+                "No support for thread-local allocation for selector {:?}",
+                selector
+            );
         }
     };
 }
@@ -377,33 +354,29 @@ pub extern "C" fn mmtk_set_default_thread_local_cursor_limit(
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
-    mutator: *mut Mutator<Art>
+    mutator: *mut Mutator<Art>,
 ) -> BumpPointer {
     debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
-    let selector = mmtk::memory_manager::get_allocator_mapping(
-        &SINGLETON,
-        AllocationSemantics::Default,
-    );
+    let selector =
+        mmtk::memory_manager::get_allocator_mapping(&SINGLETON, AllocationSemantics::Default);
     // We only match the default allocator, so the index is always 0
     match selector {
         AllocatorSelector::BumpPointer(0) => {
             // SAFETY: Assumes mutator is valid
             let default_allocator = unsafe {
-                (*mutator)
-                    .allocator_impl_mut::<mmtk::util::alloc::BumpAllocator<Art>>(selector)
+                (*mutator).allocator_impl_mut::<mmtk::util::alloc::BumpAllocator<Art>>(selector)
             };
             // Return the current bump pointer values
             default_allocator.bump_pointer
-        },
+        }
         AllocatorSelector::Immix(0) => {
             // SAFETY: Assumes mutator is valid
             let default_allocator = unsafe {
-                (*mutator)
-                    .allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
+                (*mutator).allocator_impl_mut::<mmtk::util::alloc::ImmixAllocator<Art>>(selector)
             };
             // Return the current bump pointer values
             default_allocator.bump_pointer
-        },
+        }
         // XXX(kunals): MarkCompact is currently unsupported due to the extra
         // header word that would need to be added to the object in the inline
         // fast-path
@@ -416,7 +389,10 @@ pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
         //     default_allocator.bump_allocator.bump_pointer
         // },
         _ => {
-            panic!("No support for thread-local allocation for selector {:?}", selector);
+            panic!(
+                "No support for thread-local allocation for selector {:?}",
+                selector
+            );
         }
     }
 }
@@ -465,7 +441,9 @@ pub extern "C" fn mmtk_is_object_forwarded(object: Option<ObjectReference>) -> b
 /// Get the forwarding address of the given object if it has been forwarded.
 /// Returns `nullptr` if the object hasn't been forwarded.
 #[no_mangle]
-pub extern "C" fn mmtk_get_forwarded_object(object: Option<ObjectReference>) -> Option<ObjectReference> {
+pub extern "C" fn mmtk_get_forwarded_object(
+    object: Option<ObjectReference>,
+) -> Option<ObjectReference> {
     if let Some(obj) = object {
         obj.get_forwarded_object::<Art>()
     } else {
@@ -537,15 +515,10 @@ pub extern "C" fn mmtk_set_image_space(boot_image_start_address: Address, boot_i
 pub extern "C" fn mmtk_handle_user_collection_request(
     tls: VMMutatorThread,
     force: bool,
-    exhaustive: bool
+    exhaustive: bool,
 ) -> bool {
     debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
-    mmtk::memory_manager::handle_user_collection_request(
-        &SINGLETON,
-        tls,
-        force,
-        exhaustive
-    )
+    mmtk::memory_manager::handle_user_collection_request(&SINGLETON, tls, force, exhaustive)
 }
 
 /// Request full-heap GC to occur before forking the Zygote for the first time.
@@ -553,17 +526,10 @@ pub extern "C" fn mmtk_handle_user_collection_request(
 #[no_mangle]
 pub extern "C" fn mmtk_handle_pre_first_zygote_fork_collection_request(tls: VMMutatorThread) {
     debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
-    mmtk::memory_manager::handle_pre_first_zygote_fork_collection_request(
-        &SINGLETON,
-        tls,
-    );
+    mmtk::memory_manager::handle_pre_first_zygote_fork_collection_request(&SINGLETON, tls);
 
     // SAFETY: Assumes upcalls is valid
-    unsafe {
-        ((*UPCALLS).set_has_zygote_space_in_art)(
-            SINGLETON.has_zygote_space(),
-        )
-    }
+    unsafe { ((*UPCALLS).set_has_zygote_space_in_art)(SINGLETON.has_zygote_space()) }
 }
 
 /// Return if current collection is an emergency collection
@@ -687,10 +653,7 @@ pub extern "C" fn mmtk_create_perf_counters() {
 /// and then enable collecting statistics inside MMTk
 #[no_mangle]
 pub extern "C" fn mmtk_harness_begin(tls: VMMutatorThread) {
-    mmtk::memory_manager::harness_begin(
-        &SINGLETON,
-        tls,
-    )
+    mmtk::memory_manager::harness_begin(&SINGLETON, tls)
 }
 
 /// Generic hook to allow benchmarks to be harnessed. We stop collecting
