@@ -13,6 +13,14 @@ use mmtk::{
 };
 use std::sync::atomic::Ordering;
 
+#[inline]
+fn visit_slot<SV: SlotVisitor<ArtSlot>>(slot_visitor: &mut SV, slot: ArtSlot) {
+    use mmtk::vm::slot::Slot;
+    if slot.load().is_some() {
+        slot_visitor.visit_slot(slot);
+    }
+}
+
 impl Object {
     /// Visit the instance fields of an object.
     #[inline]
@@ -24,7 +32,7 @@ impl Object {
         let mut visit_one_word = |mut field_offset: u32, mut ref_offsets: u32| {
             while ref_offsets != 0 {
                 if (ref_offsets & 0b1) != 0 {
-                    slot_visitor.visit_slot(get_field_slot(self, field_offset as i32));
+                    visit_slot(slot_visitor, get_field_slot(self, field_offset as i32));
                 }
                 ref_offsets >>= 1;
                 field_offset += ART_HEAP_REFERENCE_SIZE as u32;
@@ -95,7 +103,7 @@ impl Class {
             for _i in 0..num_reference_fields {
                 debug_assert_ne!(field_offset, Object::class_offset());
                 let field = get_field_slot(obj, field_offset as i32);
-                slot_visitor.visit_slot(field);
+                visit_slot(slot_visitor, field);
                 field_offset += ART_HEAP_REFERENCE_SIZE;
             }
         }
@@ -110,7 +118,7 @@ impl<T> ObjectArray<T> {
         for i in 0..length {
             let obj: &Object = self.into();
             let element = get_field_slot(obj, self.offset_of_element(i) as i32);
-            slot_visitor.visit_slot(element);
+            visit_slot(slot_visitor, element);
         }
     }
 }
