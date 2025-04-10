@@ -22,7 +22,6 @@ impl ObjectModel<Art> for ArtObjectModel {
 
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
-    const IN_OBJECT_ADDRESS_OFFSET: isize = 0;
 
     fn copy(
         from: ObjectReference,
