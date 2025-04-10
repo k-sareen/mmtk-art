@@ -150,6 +150,7 @@ typedef struct {
   );
   void (*process_referent) (void* klass, void* ref, ScanObjectClosure closure);
   bool (*is_valid_object) (void* object);
+  void (*dump_object) (void* object);
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
   void (*suspend_mutators) (void* tls);
