@@ -160,6 +160,7 @@ typedef struct {
   MmtkMutator (*get_mmtk_mutator) (void* tls);
   void (*for_all_mutators) (MutatorClosure closure);
   void (*scan_all_roots) (SlotsClosure closure);
+  void (*scan_vm_space_objects) (NodesClosure closure);
   void (*process_references) (
     void* tls,
     TraceObjectClosure closure,

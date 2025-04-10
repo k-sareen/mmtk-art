@@ -37,6 +37,13 @@ impl Scanning<Art> for ArtScanning {
     ) {
     }
 
+    fn scan_vm_space_objects(_tls: VMWorkerThread, mut closure: impl FnMut(Vec<ObjectReference>)) {
+        // SAFETY: Assumes upcalls is valid
+        unsafe {
+            ((*UPCALLS).scan_vm_space_objects)(to_vm_space_nodes_closure(&mut closure));
+        }
+    }
+
     fn scan_vm_specific_roots(_tls: VMWorkerThread, mut factory: impl RootsWorkFactory<ArtSlot>) {
         // SAFETY: Assumes upcalls is valid
         unsafe {
@@ -213,6 +220,34 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
     RustBuffer { ptr, len, capacity }
 }
 
+/// Create a buffer of size `length` and capacity `capacity`. This buffer is
+/// used for reporting VM space objects to MMTk. The C++ code should store slots
+/// in the buffer carefully to avoid segfaulting.
+extern "C" fn report_vm_space_nodes_and_renew_buffer<F: FnMut(Vec<ObjectReference>)>(
+    ptr: *mut Address,
+    length: usize,
+    capacity: usize,
+    closure_ptr: *mut libc::c_void,
+) -> RustBuffer {
+    if !ptr.is_null() {
+        // SAFETY: Assumes ptr is valid
+        let buf = unsafe {
+            Vec::<ObjectReference>::from_raw_parts(std::mem::transmute(ptr), length, capacity)
+        };
+        // SAFETY: Assumes closure_ptr is valid
+        let closure: &mut F = unsafe { &mut *(closure_ptr as *mut F) };
+        closure(buf);
+    }
+    let (ptr, len, capacity) = {
+        // TODO: Use Vec::into_raw_parts() when the method is available.
+        use std::mem::ManuallyDrop;
+        let new_vec = Vec::with_capacity(WORK_PACKET_CAPACITY);
+        let mut me = ManuallyDrop::new(new_vec);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    };
+    RustBuffer { ptr, len, capacity }
+}
+
 /// Function that allows C/C++ code to invoke a `ScanObjectClosure` closure
 extern "C" fn scan_object_fn<SV: SlotVisitor<ArtSlot>>(
     slot: ArtSlot,
@@ -229,6 +264,16 @@ pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtSlot>>(factory: &mut F) ->
     NodesClosure {
         func: report_nodes_and_renew_buffer::<F>,
         data: factory as *mut F as *mut libc::c_void,
+    }
+}
+
+/// Convert a `RootsWorkFactory` into a `NodesClosure` for VM space objects
+pub(crate) fn to_vm_space_nodes_closure<F: FnMut(Vec<ObjectReference>)>(
+    closure: &mut F,
+) -> NodesClosure {
+    NodesClosure {
+        func: report_vm_space_nodes_and_renew_buffer::<F>,
+        data: closure as *mut F as *mut libc::c_void,
     }
 }
 
