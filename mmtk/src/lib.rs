@@ -183,7 +183,7 @@ fn set_vm_layout(builder: &mut MMTKBuilder) {
 }
 
 /// The type of slot in ART. ART slots only operate on 32-bits
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[repr(transparent)]
 pub struct ArtSlot(pub Address);
 
@@ -196,6 +196,10 @@ impl Slot for ArtSlot {
     fn store(&self, object: ObjectReference) {
         // SAFETY: Assumes internal address is valid
         unsafe { self.0.store::<u32>(compress(object)) }
+    }
+
+    fn as_address(&self) -> Address {
+        self.0
     }
 }
 
@@ -355,6 +359,8 @@ pub struct ArtUpcalls {
     pub for_all_mutators: extern "C" fn(closure: MutatorClosure),
     /// Scan all VM roots and report slots to MMTk
     pub scan_all_roots: extern "C" fn(closure: SlotsClosure),
+    /// Scan all objects in VM space
+    pub scan_vm_space_objects: extern "C" fn(closure: NodesClosure),
     /// Process weak references
     pub process_references: extern "C" fn(
         tls: VMWorkerThread,
