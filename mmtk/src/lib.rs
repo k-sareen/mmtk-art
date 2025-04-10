@@ -335,6 +335,8 @@ pub struct ArtUpcalls {
     ),
     /// Is the given object valid?
     pub is_valid_object: extern "C" fn(object: ObjectReference) -> bool,
+    /// Dump object information
+    pub dump_object: extern "C" fn(object: ObjectReference),
     /// Block mutator thread for GC
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
     /// Spawn GC thread with type `kind`
