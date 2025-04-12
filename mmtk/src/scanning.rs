@@ -8,6 +8,7 @@ use mmtk::{
     vm::*,
     Mutator,
 };
+// use std::sync::{atomic::Ordering, Mutex};
 use std::sync::Mutex;
 
 /// Current weak reference processing phase we are executing
@@ -15,6 +16,11 @@ static CURRENT_WEAK_REF_PHASE: Mutex<RefProcessingPhase> = Mutex::new(RefProcess
 
 /// Implements scanning trait
 pub struct ArtScanning;
+
+// const FORWARDING_NOT_TRIGGERED_YET: u8 = 0b00;
+// const BEING_FORWARDED: u8 = 0b10;
+// const FORWARDED: u8 = 0b11;
+// const FORWARDING_POINTER_MASK: u32 = 0xffff_fffc;
 
 /// Return the forwarding bits for a given `ObjectReference`.
 fn get_forwarding_status<VM: VMBinding>(object: ObjectReference) -> u8 {
@@ -25,9 +31,64 @@ fn get_forwarding_status<VM: VMBinding>(object: ObjectReference) -> u8 {
     )
 }
 
+// pub fn is_forwarded_or_being_forwarded<VM: VMBinding>(object: ObjectReference) -> bool {
+//     get_forwarding_status::<VM>(object) != FORWARDING_NOT_TRIGGERED_YET
+// }
+//
 fn is_not_forwarded<VM: VMBinding>(object: ObjectReference) -> bool {
     get_forwarding_status::<VM>(object) == 0b00
 }
+//
+// pub fn spin_and_get_forwarded_object<VM: VMBinding>(
+//     object: ObjectReference,
+// ) -> Option<ObjectReference> {
+//     let mut forwarding_bits = get_forwarding_status::<VM>(object);
+//     if forwarding_bits == FORWARDING_NOT_TRIGGERED_YET {
+//         return None;
+//     }
+//
+//     while forwarding_bits == BEING_FORWARDED {
+//         forwarding_bits = get_forwarding_status::<VM>(object);
+//     }
+//
+//     if forwarding_bits == FORWARDED {
+//         Some(read_forwarding_pointer::<VM>(object))
+//     } else {
+//         // For some policies (such as Immix), we can have interleaving such that one thread clears
+//         // the forwarding word while another thread was stuck spinning in the above loop.
+//         // See: https://github.com/mmtk/mmtk-core/issues/579
+//         debug_assert!(
+//             forwarding_bits == FORWARDING_NOT_TRIGGERED_YET,
+//             "Invalid/Corrupted forwarding word {:x} for object {}",
+//             forwarding_bits,
+//             object,
+//         );
+//         Some(object)
+//     }
+// }
+//
+// /// Read the forwarding pointer of an object.
+// /// This function is called on forwarded/being_forwarded objects.
+// fn read_forwarding_pointer<VM: VMBinding>(object: ObjectReference) -> ObjectReference {
+//     debug_assert!(
+//         is_forwarded_or_being_forwarded::<VM>(object),
+//         "read_forwarding_pointer called for object {:?} that has not started forwarding!",
+//         object,
+//     );
+//
+//     // We write the forwarding poiner. We know it is an object reference.
+//     unsafe {
+//         // We use "unchecked" convertion becasue we guarantee the forwarding pointer we stored
+//         // previously is from a valid `ObjectReference` which is never zero.
+//         ObjectReference::from_raw_address_unchecked(crate::util::Address::from_usize(
+//             VM::VMObjectModel::LOCAL_FORWARDING_POINTER_SPEC.load_atomic::<VM, u32>(
+//                 object,
+//                 Some(FORWARDING_POINTER_MASK),
+//                 Ordering::SeqCst,
+//             ) as usize
+//         ))
+//     }
+// }
 
 impl Scanning<Art> for ArtScanning {
     fn scan_roots_in_mutator_thread(

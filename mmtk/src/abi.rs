@@ -107,6 +107,22 @@ impl Object {
 
     /// Return the Class of an object.
     pub fn get_class(&self) -> ArtHeapReference<Class> {
+        // println!(
+        //     "get_class {:x} {:x} {:x}",
+        //     // SAFETY: self is a valid Object reference.
+        //     unsafe { std::mem::transmute::<&Object, usize>(self) },
+        //     self.klass.reference.unwrap().get(),
+        //     // SAFETY: self is a valid Object reference.
+        //     unsafe { self.klass_slot().0.load::<u32>() } & 0b11
+        // );
+        // debug_assert!(
+        //     // SAFETY: self is a valid Object reference.
+        //     unsafe { self.klass_slot().0.load::<u32>() } & 0b11 != 0b11,
+        //     "Broken object {:x} {:x}",
+        //     // SAFETY: self is a valid Object reference.
+        //     unsafe { std::mem::transmute::<&Object, usize>(self) },
+        //     self.klass.reference.unwrap().get()
+        // );
         debug_assert!(ArtObjectModel::is_object_sane(self.into()));
         let klass_slot = self.klass_slot();
         // XXX(kunals): Need to mask the lowest two bits to remove the
