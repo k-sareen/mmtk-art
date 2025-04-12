@@ -204,22 +204,10 @@ impl Slot for ArtSlot {
 }
 
 impl ArtSlot {
-    /// Load the klass pointer without the forwarding bits. This is used for
-    /// cases where we need to get the class of an object that has been
-    /// forwarded to get the object size
-    pub fn load_class_without_forwarding_bits(&self) -> ArtHeapReference<Class> {
+    /// Load the klass pointer
+    pub fn load_class(&self) -> ArtHeapReference<Class> {
         // SAFETY: Assumes internal address is valid
-        unsafe { std::mem::transmute(self.0.load::<u32>() & !0b11) }
-        // // SAFETY: Assumes internal address is valid
-        // unsafe {
-        //     let klass_u32: u32 = self.0.load::<u32>();
-        //     if unlikely(klass_u32 & 0b11 == 0b11) {
-        //         let forwarded_klass = ArtSlot(Address::from_usize((klass_u32 & !0b11) as usize));
-        //         std::mem::transmute(forwarded_klass.0.load::<u32>())
-        //     } else {
-        //         std::mem::transmute(klass_u32 & !0b11)
-        //     }
-        // }
+        unsafe { std::mem::transmute(self.0.load::<u32>()) }
     }
 }
 
