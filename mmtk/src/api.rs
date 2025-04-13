@@ -38,16 +38,16 @@ use std::sync::atomic::Ordering;
 #[no_mangle]
 pub extern "C" fn mmtk_init(
     upcalls: *const ArtUpcalls,
-    _plan: PlanSelector,
+    plan: PlanSelector,
     is_zygote_process: bool,
 ) {
     // SAFETY: Assumes upcalls is valid
     unsafe { UPCALLS = upcalls };
     // Set the plan
-    // {
-    //     let mut builder = BUILDER.lock().unwrap();
-    //     builder.options.plan.set(plan);
-    // }
+    {
+        let mut builder = BUILDER.lock().unwrap();
+        builder.options.plan.set(plan);
+    }
     // Set the is_zygote_process option
     {
         let mut builder = BUILDER.lock().unwrap();
