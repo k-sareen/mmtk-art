@@ -150,6 +150,7 @@ typedef struct {
   );
   void (*process_referent) (void* klass, void* ref, ScanObjectClosure closure);
   bool (*is_valid_object) (void* object);
+  void (*dump_object) (void* object);
   void (*block_for_gc) (void* tls);
   void (*spawn_gc_thread) (void* tls, GcThreadKind kind, void* ctx);
   void (*suspend_mutators) (void* tls);
@@ -159,6 +160,7 @@ typedef struct {
   MmtkMutator (*get_mmtk_mutator) (void* tls);
   void (*for_all_mutators) (MutatorClosure closure);
   void (*scan_all_roots) (SlotsClosure closure);
+  void (*scan_vm_space_objects) (NodesClosure closure);
   void (*process_references) (
     void* tls,
     TraceObjectClosure closure,

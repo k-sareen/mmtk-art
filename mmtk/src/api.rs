@@ -401,7 +401,7 @@ pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_in_heap_space(object: Option<ObjectReference>) -> bool {
     if let Some(obj) = object {
-        mmtk::memory_manager::is_in_mmtk_spaces::<Art>(obj)
+        mmtk::memory_manager::is_in_mmtk_spaces(obj)
     } else {
         false
     }
@@ -412,7 +412,7 @@ pub extern "C" fn mmtk_is_object_in_heap_space(object: Option<ObjectReference>) 
 pub extern "C" fn mmtk_is_object_marked(object: Option<ObjectReference>) -> bool {
     // XXX(kunals): This may not really be an object...
     if let Some(obj) = object {
-        obj.is_reachable::<Art>()
+        obj.is_reachable()
     } else {
         false
     }
@@ -422,7 +422,7 @@ pub extern "C" fn mmtk_is_object_marked(object: Option<ObjectReference>) -> bool
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_movable(object: Option<ObjectReference>) -> bool {
     if let Some(obj) = object {
-        obj.is_movable::<Art>()
+        obj.is_movable()
     } else {
         false
     }
@@ -432,7 +432,7 @@ pub extern "C" fn mmtk_is_object_movable(object: Option<ObjectReference>) -> boo
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_forwarded(object: Option<ObjectReference>) -> bool {
     if let Some(obj) = object {
-        !obj.get_potential_forwarded_object::<Art>().is_zero()
+        !obj.get_potential_forwarded_object().is_zero()
     } else {
         false
     }
@@ -445,7 +445,7 @@ pub extern "C" fn mmtk_get_forwarded_object(
     object: Option<ObjectReference>,
 ) -> Option<ObjectReference> {
     if let Some(obj) = object {
-        obj.get_forwarded_object::<Art>()
+        obj.get_forwarded_object()
     } else {
         None
     }
@@ -454,13 +454,13 @@ pub extern "C" fn mmtk_get_forwarded_object(
 /// Pin the object so it does not move during GCs
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
-    mmtk::memory_manager::pin_object::<Art>(object)
+    mmtk::memory_manager::pin_object(object)
 }
 
 /// Check if an object has been pinned or not
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_pinned(object: ObjectReference) -> bool {
-    mmtk::memory_manager::is_pinned::<Art>(object)
+    mmtk::memory_manager::is_pinned(object)
 }
 
 /// Get starting heap address

@@ -183,7 +183,7 @@ fn set_vm_layout(builder: &mut MMTKBuilder) {
 }
 
 /// The type of slot in ART. ART slots only operate on 32-bits
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[repr(transparent)]
 pub struct ArtSlot(pub Address);
 
@@ -197,15 +197,17 @@ impl Slot for ArtSlot {
         // SAFETY: Assumes internal address is valid
         unsafe { self.0.store::<u32>(compress(object)) }
     }
+
+    fn as_address(&self) -> Address {
+        self.0
+    }
 }
 
 impl ArtSlot {
-    /// Load the klass pointer without the forwarding bits. This is used for
-    /// cases where we need to get the class of an object that has been
-    /// forwarded to get the object size
-    pub fn load_class_without_forwarding_bits(&self) -> ArtHeapReference<Class> {
+    /// Load the klass pointer
+    pub fn load_class(&self) -> ArtHeapReference<Class> {
         // SAFETY: Assumes internal address is valid
-        unsafe { std::mem::transmute(self.0.load::<u32>() & !0b11) }
+        unsafe { std::mem::transmute(self.0.load::<u32>()) }
     }
 }
 
@@ -335,6 +337,8 @@ pub struct ArtUpcalls {
     ),
     /// Is the given object valid?
     pub is_valid_object: extern "C" fn(object: ObjectReference) -> bool,
+    /// Dump object information
+    pub dump_object: extern "C" fn(object: ObjectReference),
     /// Block mutator thread for GC
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
     /// Spawn GC thread with type `kind`
@@ -353,6 +357,8 @@ pub struct ArtUpcalls {
     pub for_all_mutators: extern "C" fn(closure: MutatorClosure),
     /// Scan all VM roots and report slots to MMTk
     pub scan_all_roots: extern "C" fn(closure: SlotsClosure),
+    /// Scan all objects in VM space
+    pub scan_vm_space_objects: extern "C" fn(closure: NodesClosure),
     /// Process weak references
     pub process_references: extern "C" fn(
         tls: VMWorkerThread,

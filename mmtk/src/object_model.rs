@@ -12,7 +12,7 @@ impl ObjectModel<Art> for ArtObjectModel {
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
         VMLocalForwardingPointerSpec::in_header(32);
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
-        VMLocalForwardingBitsSpec::in_header(0);
+        VMLocalForwardingBitsSpec::in_header(61);
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec =
         VMLocalLOSMarkNurserySpec::side_first();
     const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec =
@@ -22,7 +22,6 @@ impl ObjectModel<Art> for ArtObjectModel {
 
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = true;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
-    const IN_OBJECT_ADDRESS_OFFSET: isize = 0;
 
     fn copy(
         from: ObjectReference,
@@ -78,8 +77,9 @@ impl ObjectModel<Art> for ArtObjectModel {
         object.to_raw_address()
     }
 
-    fn dump_object(_object: ObjectReference) {
-        unimplemented!()
+    fn dump_object(object: ObjectReference) {
+        // SAFETY: Assumes upcalls is valid
+        unsafe { ((*UPCALLS).dump_object)(object) }
     }
 
     fn is_object_sane(object: ObjectReference) -> bool {

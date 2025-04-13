@@ -8,6 +8,7 @@ use mmtk::{
     vm::*,
     Mutator,
 };
+// use std::sync::{atomic::Ordering, Mutex};
 use std::sync::Mutex;
 
 /// Current weak reference processing phase we are executing
@@ -15,6 +16,11 @@ static CURRENT_WEAK_REF_PHASE: Mutex<RefProcessingPhase> = Mutex::new(RefProcess
 
 /// Implements scanning trait
 pub struct ArtScanning;
+
+// const FORWARDING_NOT_TRIGGERED_YET: u8 = 0b00;
+// const BEING_FORWARDED: u8 = 0b10;
+// const FORWARDED: u8 = 0b11;
+// const FORWARDING_POINTER_MASK: u32 = 0xffff_fffc;
 
 /// Return the forwarding bits for a given `ObjectReference`.
 fn get_forwarding_status<VM: VMBinding>(object: ObjectReference) -> u8 {
@@ -25,9 +31,64 @@ fn get_forwarding_status<VM: VMBinding>(object: ObjectReference) -> u8 {
     )
 }
 
+// pub fn is_forwarded_or_being_forwarded<VM: VMBinding>(object: ObjectReference) -> bool {
+//     get_forwarding_status::<VM>(object) != FORWARDING_NOT_TRIGGERED_YET
+// }
+//
 fn is_not_forwarded<VM: VMBinding>(object: ObjectReference) -> bool {
     get_forwarding_status::<VM>(object) == 0b00
 }
+//
+// pub fn spin_and_get_forwarded_object<VM: VMBinding>(
+//     object: ObjectReference,
+// ) -> Option<ObjectReference> {
+//     let mut forwarding_bits = get_forwarding_status::<VM>(object);
+//     if forwarding_bits == FORWARDING_NOT_TRIGGERED_YET {
+//         return None;
+//     }
+//
+//     while forwarding_bits == BEING_FORWARDED {
+//         forwarding_bits = get_forwarding_status::<VM>(object);
+//     }
+//
+//     if forwarding_bits == FORWARDED {
+//         Some(read_forwarding_pointer::<VM>(object))
+//     } else {
+//         // For some policies (such as Immix), we can have interleaving such that one thread clears
+//         // the forwarding word while another thread was stuck spinning in the above loop.
+//         // See: https://github.com/mmtk/mmtk-core/issues/579
+//         debug_assert!(
+//             forwarding_bits == FORWARDING_NOT_TRIGGERED_YET,
+//             "Invalid/Corrupted forwarding word {:x} for object {}",
+//             forwarding_bits,
+//             object,
+//         );
+//         Some(object)
+//     }
+// }
+//
+// /// Read the forwarding pointer of an object.
+// /// This function is called on forwarded/being_forwarded objects.
+// fn read_forwarding_pointer<VM: VMBinding>(object: ObjectReference) -> ObjectReference {
+//     debug_assert!(
+//         is_forwarded_or_being_forwarded::<VM>(object),
+//         "read_forwarding_pointer called for object {:?} that has not started forwarding!",
+//         object,
+//     );
+//
+//     // We write the forwarding poiner. We know it is an object reference.
+//     unsafe {
+//         // We use "unchecked" convertion becasue we guarantee the forwarding pointer we stored
+//         // previously is from a valid `ObjectReference` which is never zero.
+//         ObjectReference::from_raw_address_unchecked(crate::util::Address::from_usize(
+//             VM::VMObjectModel::LOCAL_FORWARDING_POINTER_SPEC.load_atomic::<VM, u32>(
+//                 object,
+//                 Some(FORWARDING_POINTER_MASK),
+//                 Ordering::SeqCst,
+//             ) as usize
+//         ))
+//     }
+// }
 
 impl Scanning<Art> for ArtScanning {
     fn scan_roots_in_mutator_thread(
@@ -35,6 +96,13 @@ impl Scanning<Art> for ArtScanning {
         _mutator: &'static mut Mutator<Art>,
         _factory: impl RootsWorkFactory<ArtSlot>,
     ) {
+    }
+
+    fn scan_vm_space_objects(_tls: VMWorkerThread, mut closure: impl FnMut(Vec<ObjectReference>)) {
+        // SAFETY: Assumes upcalls is valid
+        unsafe {
+            ((*UPCALLS).scan_vm_space_objects)(to_vm_space_nodes_closure(&mut closure));
+        }
     }
 
     fn scan_vm_specific_roots(_tls: VMWorkerThread, mut factory: impl RootsWorkFactory<ArtSlot>) {
@@ -213,6 +281,34 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
     RustBuffer { ptr, len, capacity }
 }
 
+/// Create a buffer of size `length` and capacity `capacity`. This buffer is
+/// used for reporting VM space objects to MMTk. The C++ code should store slots
+/// in the buffer carefully to avoid segfaulting.
+extern "C" fn report_vm_space_nodes_and_renew_buffer<F: FnMut(Vec<ObjectReference>)>(
+    ptr: *mut Address,
+    length: usize,
+    capacity: usize,
+    closure_ptr: *mut libc::c_void,
+) -> RustBuffer {
+    if !ptr.is_null() {
+        // SAFETY: Assumes ptr is valid
+        let buf = unsafe {
+            Vec::<ObjectReference>::from_raw_parts(std::mem::transmute(ptr), length, capacity)
+        };
+        // SAFETY: Assumes closure_ptr is valid
+        let closure: &mut F = unsafe { &mut *(closure_ptr as *mut F) };
+        closure(buf);
+    }
+    let (ptr, len, capacity) = {
+        // TODO: Use Vec::into_raw_parts() when the method is available.
+        use std::mem::ManuallyDrop;
+        let new_vec = Vec::with_capacity(WORK_PACKET_CAPACITY);
+        let mut me = ManuallyDrop::new(new_vec);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    };
+    RustBuffer { ptr, len, capacity }
+}
+
 /// Function that allows C/C++ code to invoke a `ScanObjectClosure` closure
 extern "C" fn scan_object_fn<SV: SlotVisitor<ArtSlot>>(
     slot: ArtSlot,
@@ -229,6 +325,16 @@ pub(crate) fn to_nodes_closure<F: RootsWorkFactory<ArtSlot>>(factory: &mut F) ->
     NodesClosure {
         func: report_nodes_and_renew_buffer::<F>,
         data: factory as *mut F as *mut libc::c_void,
+    }
+}
+
+/// Convert a `RootsWorkFactory` into a `NodesClosure` for VM space objects
+pub(crate) fn to_vm_space_nodes_closure<F: FnMut(Vec<ObjectReference>)>(
+    closure: &mut F,
+) -> NodesClosure {
+    NodesClosure {
+        func: report_vm_space_nodes_and_renew_buffer::<F>,
+        data: closure as *mut F as *mut libc::c_void,
     }
 }
 

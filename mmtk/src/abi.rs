@@ -108,11 +108,8 @@ impl Object {
     /// Return the Class of an object.
     pub fn get_class(&self) -> ArtHeapReference<Class> {
         debug_assert!(ArtObjectModel::is_object_sane(self.into()));
-        let klass_slot = self.klass_slot();
-        // XXX(kunals): Need to mask the lowest two bits to remove the
-        // forwarding bits in case we want to read the size of an object, for
-        // example, when we are doing a GC
-        klass_slot.load_class_without_forwarding_bits()
+        // SAFETY: self is a valid ObjectReference
+        self.klass_slot().load_class()
     }
 }
 
