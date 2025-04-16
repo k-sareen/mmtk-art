@@ -8,6 +8,9 @@ use mmtk::{
     vm::*,
     Mutator,
 };
+#[cfg(feature = "single_worker")]
+use mmtk::vm::slot::Slot;
+
 // use std::sync::{atomic::Ordering, Mutex};
 use std::sync::Mutex;
 
@@ -38,6 +41,14 @@ impl Scanning<Art> for ArtScanning {
     ) {
     }
 
+    #[cfg(feature = "single_worker")]
+    fn single_threaded_scan_roots_in_mutator_thread(
+        _tls: VMWorkerThread,
+        _mutator: &'static mut Mutator<Art>,
+        _closure: impl ObjectGraphTraversal<ArtSlot>,
+    ) {
+    }
+
     fn scan_vm_space_objects(_tls: VMWorkerThread, mut closure: impl FnMut(Vec<ObjectReference>)) {
         // SAFETY: Assumes upcalls is valid
         unsafe {
@@ -49,6 +60,17 @@ impl Scanning<Art> for ArtScanning {
         // SAFETY: Assumes upcalls is valid
         unsafe {
             ((*UPCALLS).scan_all_roots)(to_slots_closure(&mut factory));
+        }
+    }
+
+    #[cfg(feature = "single_worker")]
+    fn single_threaded_scan_vm_specific_roots(
+        _tls: VMWorkerThread,
+        mut closure: impl ObjectGraphTraversal<ArtSlot>,
+    ) {
+        // SAFETY: Assumes upcalls is valid
+        unsafe {
+            ((*UPCALLS).scan_all_roots)(object_graph_traversal_to_slots_closure(&mut closure));
         }
     }
 
@@ -219,6 +241,40 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
         (me.as_mut_ptr(), me.len(), me.capacity())
     };
     RustBuffer { ptr, len, capacity }
+}
+
+#[cfg(feature = "single_worker")]
+extern "C" fn object_graph_traversal_report_roots<S: Slot, C: ObjectGraphTraversal<S>>(
+    ptr: *mut Address,
+    length: usize,
+    capacity: usize,
+    traverse_func: *mut libc::c_void,
+) -> RustBuffer {
+    if !ptr.is_null() {
+        // SAFETY: Assumes ptr is valid
+        let buf = unsafe { Vec::<S>::from_raw_parts(ptr as _, length, capacity) };
+        // SAFETY: Assumes traverse_func is valid
+        let traverse_func: &mut C = unsafe { &mut *(traverse_func as *mut C) };
+        traverse_func.report_roots(buf);
+    }
+    let (ptr, len, capacity) = {
+        // TODO: Use Vec::into_raw_parts() when the method is available.
+        use std::mem::ManuallyDrop;
+        let new_vec = Vec::with_capacity(WORK_PACKET_CAPACITY);
+        let mut me = ManuallyDrop::new(new_vec);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    };
+    RustBuffer { ptr, len, capacity }
+}
+
+#[cfg(feature = "single_worker")]
+pub(crate) fn object_graph_traversal_to_slots_closure<S: Slot, C: ObjectGraphTraversal<S>>(
+    closure: &mut C,
+) -> SlotsClosure {
+    SlotsClosure {
+        func: object_graph_traversal_report_roots::<S, C>,
+        data: closure as *mut C as *mut libc::c_void,
+    }
 }
 
 /// Create a buffer of size `length` and capacity `capacity`. This buffer is
