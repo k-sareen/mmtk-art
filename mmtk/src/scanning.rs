@@ -163,7 +163,7 @@ impl Scanning<Art> for ArtScanning {
 }
 
 /// Maximum capacity of work packet
-const WORK_PACKET_CAPACITY: usize = 4096;
+const WORK_PACKET_CAPACITY: usize = mmtk::scheduler::EDGES_WORK_BUFFER_SIZE;
 
 /// Create a buffer of size `length` and capacity `capacity`. This buffer is
 /// used for reporting nodes to MMTk. The C++ code should store nodes in the
