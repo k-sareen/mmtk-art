@@ -194,6 +194,27 @@ pub unsafe extern "C" fn mmtk_release_rust_buffer(
     length: usize,
     capacity: usize,
 ) {
+    // We use a global buffer for the single-threaded GC case and don't want to drop it
+    if cfg!(not(feature = "single_worker")) {
+        // SAFETY: Assumes ptr is valid
+        unsafe {
+            let vec = Vec::<Address>::from_raw_parts(ptr, length, capacity);
+            drop(vec);
+        }
+    }
+}
+
+/// Release a RustBuffer by dropping it. We don't check if we are the
+/// single-threaded GC before dropping the buffer. Use carefully
+///
+/// # Safety
+/// Caller needs to make sure the `ptr` is a valid vector pointer.
+#[no_mangle]
+pub unsafe extern "C" fn mmtk_release_rust_buffer_unchecked(
+    ptr: *mut Address,
+    length: usize,
+    capacity: usize,
+) {
     // SAFETY: Assumes ptr is valid
     unsafe {
         let vec = Vec::<Address>::from_raw_parts(ptr, length, capacity);

@@ -372,13 +372,25 @@ void mmtk_start_gc_worker_thread(void* tls, void* context);
 
 /**
  * Release a RustBuffer by dropping it. It is the caller's responsibility to
- * ensure that @param buffer points to a valid RustBuffer.
+ * ensure that @param buffer points to a valid RustBuffer. We don't drop the
+ * the buffer if it's been allocated by the single-threaded GC.
  *
  * @param buffer the address of the buffer
  * @param length the number of items in the buffer
  * @param capacity the maximum capacity of the buffer
  */
 void mmtk_release_rust_buffer(void** buffer, size_t length, size_t capacity);
+
+/**
+ * Release a RustBuffer by dropping it. It is the caller's responsibility to
+ * ensure that @param buffer points to a valid RustBuffer. This will drop the
+ * buffer without checking if we are the single-threaded GC. Use carefully.
+ *
+ * @param buffer the address of the buffer
+ * @param length the number of items in the buffer
+ * @param capacity the maximum capacity of the buffer
+ */
+void mmtk_release_rust_buffer_unchecked(void** buffer, size_t length, size_t capacity);
 
 /**
  * Release a RustAllocatedRegionBuffer by dropping it. It is the caller's

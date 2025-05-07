@@ -247,22 +247,19 @@ extern "C" fn report_slots_and_renew_buffer<F: RootsWorkFactory<ArtSlot>>(
 extern "C" fn object_graph_traversal_report_roots<S: Slot, C: ObjectGraphTraversal<S>>(
     ptr: *mut Address,
     length: usize,
-    capacity: usize,
+    _capacity: usize,
     traverse_func: *mut libc::c_void,
 ) -> RustBuffer {
+    // SAFETY: Assumes traverse_func is valid
+    let traverse_func: &mut C = unsafe { &mut *(traverse_func as *mut C) };
     if !ptr.is_null() {
-        // SAFETY: Assumes ptr is valid
-        let buf = unsafe { Vec::<S>::from_raw_parts(ptr as _, length, capacity) };
-        // SAFETY: Assumes traverse_func is valid
-        let traverse_func: &mut C = unsafe { &mut *(traverse_func as *mut C) };
-        traverse_func.report_roots(buf);
+        traverse_func.report_roots(length);
     }
     let (ptr, len, capacity) = {
-        // TODO: Use Vec::into_raw_parts() when the method is available.
         use std::mem::ManuallyDrop;
-        let new_vec = Vec::with_capacity(WORK_PACKET_CAPACITY);
-        let mut me = ManuallyDrop::new(new_vec);
-        (me.as_mut_ptr(), me.len(), me.capacity())
+        let buf = traverse_func.get_mark_stack();
+        let mut me = ManuallyDrop::new(buf);
+        (me.as_mut_ptr() as *mut Address, me.len(), me.capacity())
     };
     RustBuffer { ptr, len, capacity }
 }
