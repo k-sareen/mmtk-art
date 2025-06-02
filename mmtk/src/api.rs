@@ -421,6 +421,7 @@ pub extern "C" fn mmtk_get_default_thread_local_cursor_limit(
 /// Return if an object is allocated by MMTk
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_in_heap_space(object: Option<ObjectReference>) -> bool {
+    // XXX(kunals): This may not really be an object...
     if let Some(obj) = object {
         mmtk::memory_manager::is_in_mmtk_spaces(obj)
     } else {
@@ -434,6 +435,17 @@ pub extern "C" fn mmtk_is_object_marked(object: Option<ObjectReference>) -> bool
     // XXX(kunals): This may not really be an object...
     if let Some(obj) = object {
         obj.is_reachable()
+    } else {
+        false
+    }
+}
+
+/// Check if given object is live. This is used to implement the sanity GC in ART
+#[no_mangle]
+pub extern "C" fn mmtk_is_object_live(object: Option<ObjectReference>) -> bool {
+    // XXX(kunals): This may not really be an object...
+    if let Some(obj) = object {
+        obj.is_live()
     } else {
         false
     }

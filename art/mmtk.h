@@ -315,6 +315,15 @@ void mmtk_set_runtime_pointer_size(size_t pointer_size);
 bool mmtk_is_object_marked(void* object);
 
 /**
+ * Return if the object is live or not. Note that the immortal space will
+ * always return true for this function.
+ *
+ * @param object the object to be queried
+ * @return if the object is live
+ */
+bool mmtk_is_object_live(void* object);
+
+/**
  * Check if an object has been allocated by MMTk
  *
  * @param object address of the object
