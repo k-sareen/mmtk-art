@@ -50,9 +50,10 @@ rust_ffi_shared {
             ],
         },
     },
-    // features: [
-    //     "simple_scan_object",
-    // ],
+    features: [
+        "single_worker",
+        // "simple_scan_object",
+    ],
     // If we want to use MMTk's USDT tracing facilities, then we need
     // to avoid stripping the section
     // strip: {
