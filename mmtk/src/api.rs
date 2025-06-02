@@ -3,7 +3,7 @@ extern crate android_logger;
 
 use crate::{
     Art, ArtSlot, ArtUpcalls, RustAllocatedRegionBuffer, RustObjectReferenceBuffer, BUILDER,
-    IS_MMTK_INITIALIZED, LOG_BYTES_IN_SLOT, SINGLETON, TRIGGER_INIT, UPCALLS,
+    IS_MMTK_INITIALIZED, LOG_BYTES_IN_SLOT, SINGLETON, TRIGGER_INIT, UPCALLS, object_model::ArtObjectModel,
 };
 #[cfg(target_os = "android")]
 use android_logger::Config;
@@ -605,6 +605,28 @@ pub extern "C" fn mmtk_object_reference_write_post(
     slot: ArtSlot,
     target: Option<ObjectReference>,
 ) {
+    use mmtk::vm::slot::Slot;
+    use mmtk::vm::ObjectModel;
+    debug_assert!(
+        ArtObjectModel::is_object_sane(src),
+        "{:?} is not a sane object! src={:?}, slot={:?}, target={:?}",
+        src, src, slot, target,
+    );
+    debug_assert!(
+        slot.as_address().is_aligned_to(4),
+        "slot {:?} is not aligned to 4-bytes! src={:?}, slot={:?}, target={:?}",
+        slot, src, slot, target,
+    );
+    debug_assert!(
+        slot.as_address().is_zero() || (slot.as_address() > src.to_raw_address()),
+        "slot {:?} is not after src {:?}! src={:?}, slot={:?}, target={:?}",
+        slot, src, src, slot, target,
+    );
+    debug_assert!(
+        target.is_none() || ArtObjectModel::is_object_sane(target.unwrap()),
+        "{:?} is not a sane target object! src={:?}, slot={:?}, target={:?}",
+        target, src, slot, target,
+    );
     // SAFETY: Assumes mutator is valid
     unsafe {
         (*mutator)
@@ -643,6 +665,34 @@ pub extern "C" fn mmtk_array_copy_post(
     count: usize,
 ) {
     let bytes: usize = count << LOG_BYTES_IN_SLOT;
+    #[cfg(debug_assertions)]
+    {
+        use crate::ArtMemorySlice;
+        use mmtk::vm::slot::MemorySlice;
+        use mmtk::vm::slot::Slot;
+        let src_slice: ArtMemorySlice = (src..src + bytes).into();
+        let dst_slice: ArtMemorySlice = (dst..dst + bytes).into();
+        for addr in src_slice.iter_slots() {
+            debug_assert!(
+                addr.as_address().is_aligned_to(4),
+                "Address {:?} is not aligned to 4-bytes! src={:?}, dst={:?}, count={}",
+                addr,
+                src,
+                dst,
+                count
+            );
+        }
+        for addr in dst_slice.iter_slots() {
+            debug_assert!(
+                addr.as_address().is_aligned_to(4),
+                "Address {:?} is not aligned to 4-bytes! src={:?}, dst={:?}, count={}",
+                addr,
+                src,
+                dst,
+                count
+            );
+        }
+    }
     // SAFETY: Assumes mutator is valid
     unsafe {
         (*mutator)
