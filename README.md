@@ -8,7 +8,7 @@ Our [MMTk fork](https://github.com/k-sareen/mmtk-core/tree/main-art-rebase) host
 
 ## Current Status
 
-We support the `NoGC`, `SemiSpace`, `Immix`, `StickyImmix`, and `GenCopy` plans in MMTk core.
+We support the `NoGC`, `SemiSpace`, `Immix`, `StickyImmix`, `GenImmix`, and `GenCopy` plans in MMTk core.
 
 We can run headless ART builds both on target and host and for both x86_64 and aarch64 devices.
 `NoGC` is only supported for headless ART builds.
@@ -125,14 +125,10 @@ $ adb logcat | grep "mmtk-art"
 
 ## Known Limitations
 
-Generational plans such as `StickyImmix` and `GenCopy` are only supported for x86_64 as the write barriers have not been implemented for any other platform.
+From the generational plans, only `StickyImmix` is currently supported for APEX builds as the others do not have support for the `ZygoteSpace`.
 
 We've temporarily disabled loading app images at run-time since we currently do not have a way to remove image spaces inside MMTk.
 Once we have this functionality, we will enable this feature and register app images with MMTk.
 
 The port has not been performance tuned at all.
 For example, currently the write barrier is a full call into MMTk even for the fast-path.
-
-There are also major features missing from MMTk currently such as the ability to return free pages back to the operating system, which is obviously a key requirement for mobile devices.
-MMTk can also be brittle as it currently does not deal with `mmap` failures.
-These `mmap` failures can arise from the JIT-compiler allocating JIT-ted code into MMTk's address space.
