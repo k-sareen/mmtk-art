@@ -159,7 +159,10 @@ fn set_vm_layout(builder: &mut MMTKBuilder) {
         "Heap size is larger than 2 GB!"
     );
 
-    let start = 0x1000_0000;
+    // Start the heap from the first chunk. With this base address, the maximum
+    // heap size is ~1788 MB since the ART boot image really wants to be mapped
+    // at 0x7000_0000.
+    let start = 0x040_0000;
     let end = start + max_heap_size;
 
     // SAFETY: start is a valid address from above
