@@ -3,7 +3,7 @@ extern crate android_logger;
 
 use crate::{
     Art, ArtSlot, ArtUpcalls, RustAllocatedRegionBuffer, RustObjectReferenceBuffer, BUILDER,
-    IS_MMTK_INITIALIZED, LOG_BYTES_IN_SLOT, SINGLETON, TRIGGER_INIT, UPCALLS, object_model::ArtObjectModel,
+    IS_MMTK_INITIALIZED, LOG_BYTES_IN_SLOT, SINGLETON, TRIGGER_INIT, UPCALLS, object_model::ArtObjectModel, abi::get_object_size,
 };
 #[cfg(target_os = "android")]
 use android_logger::Config;
@@ -618,9 +618,11 @@ pub extern "C" fn mmtk_object_reference_write_post(
         slot, src, slot, target,
     );
     debug_assert!(
-        slot.as_address().is_zero() || (slot.as_address() > src.to_raw_address()),
-        "slot {:?} is not after src {:?}! src={:?}, slot={:?}, target={:?}",
-        slot, src, src, slot, target,
+        slot.as_address().is_zero()
+            || (slot.as_address() >= src.to_raw_address()
+                && slot.as_address() < src.to_raw_address() + get_object_size(src)),
+        "slot {:?} is not within src {:?}-{:?}! src={:?}, slot={:?}, target={:?}",
+        slot, src, src.to_raw_address() + get_object_size(src), src, slot, target,
     );
     debug_assert!(
         target.is_none() || ArtObjectModel::is_object_sane(target.unwrap()),
@@ -682,15 +684,34 @@ pub extern "C" fn mmtk_array_copy_post(
                 count
             );
         }
-        for addr in dst_slice.iter_slots() {
+        let mut idx = 0;
+        for dst_addr in dst_slice.iter_slots() {
             debug_assert!(
-                addr.as_address().is_aligned_to(4),
+                dst_addr.as_address().is_aligned_to(4),
                 "Address {:?} is not aligned to 4-bytes! src={:?}, dst={:?}, count={}",
-                addr,
+                dst_addr,
                 src,
                 dst,
                 count
             );
+            // Check if src and dst are overlapping. We can't check this assertion for overlapping slices
+            let overlapping = src + (count << LOG_BYTES_IN_SLOT) > dst || (dst + (count << LOG_BYTES_IN_SLOT) > src);
+            if !src.is_zero() && !overlapping {
+                let src_addr: ArtSlot = ArtSlot(src + (idx << LOG_BYTES_IN_SLOT) as usize);
+                debug_assert_eq!(
+                    dst_addr.load(),
+                    src_addr.load(),
+                    "Destination address {:?} does not have same value ({:?}) as source address {:?} ({:?})! src={:?}, dst={:?}, count={}",
+                    dst_addr,
+                    dst_addr.load(),
+                    src_addr,
+                    src_addr.load(),
+                    src,
+                    dst,
+                    count
+                );
+                idx += 1;
+            }
         }
     }
     // SAFETY: Assumes mutator is valid
