@@ -764,5 +764,23 @@ pub extern "C" fn mmtk_harness_begin(tls: VMMutatorThread) {
 /// statistics and print stats values
 #[no_mangle]
 pub extern "C" fn mmtk_harness_end() {
-    mmtk::memory_manager::harness_end(&SINGLETON)
+    mmtk::memory_manager::harness_end(&SINGLETON);
+    mmtk_dump_llvm_profile_file();
+}
+
+#[cfg(feature = "llvm_pgo_build")]
+extern "C" {
+    fn __llvm_profile_write_file() -> i32;
+}
+
+#[cfg(not(feature = "llvm_pgo_build"))]
+unsafe fn __llvm_profile_write_file() -> i32 {
+    0
+}
+
+/// Dump the gathered LLVM profile information file to disk.
+#[no_mangle]
+pub extern "C" fn mmtk_dump_llvm_profile_file() -> i32 {
+    // SAFETY: We've statically linked the libclang_rt.profile library so this function exists
+    unsafe { __llvm_profile_write_file() }
 }

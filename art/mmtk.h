@@ -617,6 +617,11 @@ void mmtk_harness_begin(void* tls);
  */
 void mmtk_harness_end();
 
+/**
+ * Dump the gathered LLVM profile information file to disk.
+ */
+int mmtk_dump_llvm_profile_file(void);
+
 // }
 } // extern "C"
 
