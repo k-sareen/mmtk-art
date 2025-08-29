@@ -26,6 +26,16 @@ pub extern "C" fn mmtk_init(
     plan: PlanSelector,
     is_zygote_process: bool,
 ) {
+    // Make sure that we haven't initialized MMTk (by accident) yet
+    // XXX(kunals): Some tests re-create a new `art::Runtime` instance which may end up
+    // calling the `mmtk_init` function again. Just avoid re-initializing MMTk in that case.
+    assert!(!crate::IS_MMTK_INITIALIZED.load(Ordering::SeqCst) || !is_zygote_process);
+
+    if crate::IS_MMTK_INITIALIZED.load(Ordering::SeqCst) {
+        crate::IS_MMTK_REINITIALIZING.store(true, Ordering::SeqCst);
+        return;
+    }
+
     // SAFETY: Assumes upcalls is valid
     unsafe { UPCALLS = upcalls };
     // Set the plan
@@ -43,8 +53,6 @@ pub extern "C" fn mmtk_init(
             is_zygote_process,
         );
     }
-    // Make sure that we haven't initialized MMTk (by accident) yet
-    assert!(!crate::IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
 
     // Attempt to init a logger for MMTk
     #[cfg(target_os = "android")]
@@ -73,7 +81,9 @@ pub extern "C" fn mmtk_init(
 #[no_mangle]
 pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
     debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
-    mmtk::memory_manager::initialize_collection(&SINGLETON, tls);
+    if !crate::IS_MMTK_REINITIALIZING.load(Ordering::SeqCst) {
+        mmtk::memory_manager::initialize_collection(&SINGLETON, tls);
+    }
 }
 
 /// Set the size of a pointer used by the runtime

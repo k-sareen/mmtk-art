@@ -82,6 +82,8 @@ pub enum RefProcessingPhase {
 
 /// Has MMTk been initialized?
 pub static IS_MMTK_INITIALIZED: AtomicBool = AtomicBool::new(false);
+/// Is MMTk getting re-initialized?
+pub static IS_MMTK_REINITIALIZING: AtomicBool = AtomicBool::new(false);
 /// The size of a pointer in ART
 pub static ART_POINTER_SIZE: AtomicUsize = AtomicUsize::new(std::mem::size_of::<usize>());
 
