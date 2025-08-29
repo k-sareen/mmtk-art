@@ -18,13 +18,14 @@ typedef void* VMThread;
 enum GcThreadKind { MmtkGcWorker };
 // Allocation semantics
 enum AllocationSemantics {
-  AllocatorDefault   = 0,
-  AllocatorImmortal  = 1,
-  AllocatorLos       = 2,
-  AllocatorCode      = 3,
-  AllocatorReadOnly  = 4,
-  AllocatorLargeCode = 5,
-  AllocatorNonMoving = 6,
+  AllocatorDefault      = 0,
+  AllocatorImmortal     = 1,
+  AllocatorLos          = 2,
+  AllocatorCode         = 3,
+  AllocatorReadOnly     = 4,
+  AllocatorLargeCode    = 5,
+  AllocatorNonMoving    = 6,
+  AllocatorPrimitiveLos = 7,
 };
 // Reference processing phase
 enum RefProcessingPhase {
