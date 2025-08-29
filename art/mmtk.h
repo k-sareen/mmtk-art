@@ -52,9 +52,9 @@ enum MmtkAllocationError {
 };
 // ART object types with native roots
 enum ArtObjectNativeRootsType {
-  kArtObjNRTClass       = 0,
-  kArtObjNRTDexCache    = 1,
-  kArtObjNRTClassLoader = 2,
+  kClass       = 0,
+  kDexCache    = 1,
+  kClassLoader = 2,
 };
 
 // A representation of an MMTk bump pointer for embedding in the mutator's TLS
