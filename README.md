@@ -16,7 +16,7 @@ We can run headless ART builds both on target and host and for both x86_64 and a
 We have allocation fast-paths implemented for all architectures.
 
 We can boot an AOSP build on an x86_64 Cuttlefish VM with the `SemiSpace`, `Immix`, and `StickyImmix` plans.
-We can boot an AOSP build on an actual arm64 device with the `SemiSpace` and `Immix` plans.
+We can boot an AOSP build on an actual arm64 device with the `SemiSpace`, `Immix`, and `StickyImmix` plans.
 
 ## Building and Installation Instructions
 
@@ -86,6 +86,16 @@ To build MMTk ART with `StickyImmix`:
 $ RUST_BACKTRACE=1 ART_USE_MMTK=1 ART_USE_READ_BARRIER=false ART_USE_WRITE_BARRIER=true ART_DEFAULT_GC_TYPE=SS m apps_only dist
 ```
 
+#### Profile Guided Optimization
+
+MMTk core does not use any `inline` attributes to avoid second guessing the compiler.
+We've found that (ab)using `inline` attributes can lead to performance degradation as well.
+To that end, we use profile guided optimization (PGO) to inform the inlining decisions of the compiler.
+We provide PGO profiles under the `profiles/` directory for the supported plans for both headless and APEX builds.
+If you want to enable PGO builds, you will have to add the profile file to the build command in the `Android.bp` file.
+Note that unfortunately due to how Android invokes `rustc` and a Rust compiler bug, we can't use the `-C linker-plugin-lto` flag as it triggers the bug.
+We have currently disabled it for our PGO builds.
+
 ### Installation
 
 #### Cuttlefish VM
@@ -125,7 +135,7 @@ $ adb logcat | grep "mmtk-art"
 
 ## Known Limitations
 
-From the generational plans, only `StickyImmix` is currently supported for APEX builds as the others do not have support for the `ZygoteSpace`.
+From the generational plans, only `StickyImmix` is currently supported for APEX builds as the others do not have support for the `ZygoteSpace` yet.
 
 We've temporarily disabled loading app images at run-time since we currently do not have a way to remove image spaces inside MMTk.
 Once we have this functionality, we will enable this feature and register app images with MMTk.
