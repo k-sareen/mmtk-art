@@ -91,6 +91,7 @@ $ RUST_BACKTRACE=1 ART_USE_MMTK=1 ART_USE_READ_BARRIER=false ART_USE_WRITE_BARRI
 MMTk core does not use any `inline` attributes to avoid second guessing the compiler.
 We've found that (ab)using `inline` attributes can lead to performance degradation as well.
 To that end, we use profile guided optimization (PGO) to inform the inlining decisions of the compiler.
+
 We provide PGO profiles under the `profiles/` directory for the supported plans for both headless and APEX builds.
 If you want to enable PGO builds, you will have to add the profile file to the build command in the `Android.bp` file.
 Note that unfortunately due to how Android invokes `rustc` and a Rust compiler bug, we can't use the `-C linker-plugin-lto` flag as it triggers the bug.
