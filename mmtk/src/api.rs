@@ -791,6 +791,13 @@ unsafe fn __llvm_profile_write_file() -> i32 {
 /// Dump the gathered LLVM profile information file to disk.
 #[no_mangle]
 pub extern "C" fn mmtk_dump_llvm_profile_file() -> i32 {
-    // SAFETY: We've statically linked the libclang_rt.profile library so this function exists
-    unsafe { __llvm_profile_write_file() }
+    // Directly write this file only for apex builds. Headless runs will automatically
+    // write out the profile file if compiled with __ANDROID_CLANG_COVERAGE__ enabled in
+    // art/libartbase/base/fast_exit.h
+    if SINGLETON.has_zygote_space() {
+        // SAFETY: We've statically linked the libclang_rt.profile library so this function exists
+        unsafe { __llvm_profile_write_file() }
+    } else {
+        0
+    }
 }
