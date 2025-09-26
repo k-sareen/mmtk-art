@@ -545,12 +545,23 @@ pub extern "C" fn mmtk_get_number_of_workers() -> u32 {
 /// Set the image space address and size to make MMTk aware of the boot image
 #[no_mangle]
 #[allow(mutable_transmutes)]
-pub extern "C" fn mmtk_set_image_space(boot_image_start_address: Address, boot_image_size: usize) {
+pub extern "C" fn mmtk_set_image_space(image_start_address: Address, image_size: usize) {
     debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
     let mmtk: &mmtk::MMTK<Art> = &SINGLETON;
     // SAFETY: Assumes mmtk is valid
     let mmtk_mut: &mut mmtk::MMTK<Art> = unsafe { std::mem::transmute(mmtk) };
-    mmtk::memory_manager::set_vm_space(mmtk_mut, boot_image_start_address, boot_image_size);
+    mmtk::memory_manager::set_vm_space(mmtk_mut, image_start_address, image_size);
+}
+
+/// Remove the given image space from MMTk's VM space
+#[no_mangle]
+#[allow(mutable_transmutes)]
+pub extern "C" fn mmtk_remove_image_space(image_start_address: Address, image_size: usize) {
+    debug_assert!(IS_MMTK_INITIALIZED.load(Ordering::SeqCst));
+    let mmtk: &mmtk::MMTK<Art> = &SINGLETON;
+    // SAFETY: Assumes mmtk is valid
+    let mmtk_mut: &mut mmtk::MMTK<Art> = unsafe { std::mem::transmute(mmtk) };
+    mmtk::memory_manager::remove_vm_space(mmtk_mut, image_start_address, image_size);
 }
 
 /// Handle user collection request. Returns whether a GC was ran or not.

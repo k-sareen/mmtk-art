@@ -293,10 +293,18 @@ RustObjectReferenceBuffer mmtk_enumerate_large_objects();
 /**
  * Set the image space address and size to make MMTk aware of the boot image
  *
- * @param boot_image_start_address the starting address of the boot image
- * @param boot_image_size the size of the boot image space
+ * @param image_start_address the starting address of the image
+ * @param image_size the size of the image space
  */
-void mmtk_set_image_space(uint32_t boot_image_start_address, uint32_t boot_image_size);
+void mmtk_set_image_space(uint32_t image_start_address, uint32_t image_size);
+
+/**
+ * Remove the given image space from MMTk's VM space
+ *
+ * @param image_start_address the starting address of the image
+ * @param image_size the size of the image space
+ */
+void mmtk_remove_image_space(uint32_t image_start_address, uint32_t image_size);
 
 /**
  * Set the size of a pointer used by the runtime. Note that it could be something other
