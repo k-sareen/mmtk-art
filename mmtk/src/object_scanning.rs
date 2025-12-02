@@ -13,7 +13,6 @@ use mmtk::{
 };
 use std::sync::atomic::Ordering;
 
-#[inline]
 fn visit_slot<SV: SlotVisitor<ArtSlot>>(slot_visitor: &mut SV, slot: ArtSlot) {
     use mmtk::vm::slot::Slot;
     if slot.load().is_some() {
@@ -23,7 +22,6 @@ fn visit_slot<SV: SlotVisitor<ArtSlot>>(slot_visitor: &mut SV, slot: ArtSlot) {
 
 impl Object {
     /// Visit the instance fields of an object.
-    #[inline]
     pub fn visit_instance_fields_references<SV: SlotVisitor<ArtSlot>>(
         &self,
         klass: &Class,
@@ -67,7 +65,6 @@ impl Object {
 impl Class {
     /// Visit references in an instance of a java.lang.Class.
     #[allow(non_upper_case_globals)]
-    #[inline]
     pub fn visit_references<const kVisitNativeRoots: bool, SV: SlotVisitor<ArtSlot>>(
         &self,
         object: ObjectReference,
@@ -90,7 +87,6 @@ impl Class {
     }
 
     /// Visit static reference fields in an instance of a java.lang.Class.
-    #[inline]
     fn visit_static_fields_references<SV: SlotVisitor<ArtSlot>>(&self, slot_visitor: &mut SV) {
         debug_assert!(!self.is_temp());
         debug_assert!(self.is_resolved());
@@ -112,7 +108,6 @@ impl Class {
 
 impl<T> ObjectArray<T> {
     /// Visit references in an object array.
-    #[inline]
     pub fn visit_references<SV: SlotVisitor<ArtSlot>>(&self, slot_visitor: &mut SV) {
         let length = self.array.length as usize;
         for i in 0..length {
@@ -176,7 +171,6 @@ impl ClassLoader {
 
 /// Efficiently scan an object.
 #[allow(non_upper_case_globals)]
-#[inline]
 pub fn scan_object<const kVisitNativeRoots: bool, SV: SlotVisitor<ArtSlot>>(
     _tls: VMWorkerThread,
     object: ObjectReference,

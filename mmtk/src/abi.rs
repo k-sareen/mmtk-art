@@ -939,7 +939,6 @@ impl From<&ClassLoader> for &Object {
 }
 
 /// Get the size of an object
-#[inline]
 pub fn get_object_size(object: ObjectReference) -> usize {
     let o: &Object = object.into();
     let result = if o.get_class().is_array_class() {
