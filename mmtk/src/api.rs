@@ -94,6 +94,7 @@ pub extern "C" fn mmtk_set_runtime_pointer_size(pointer_size: usize) {
 
 /// Set the min, max, and other heap size parameters
 #[no_mangle]
+#[allow(unused_variables)]
 pub extern "C" fn mmtk_set_heap_size(
     min: usize,
     max: usize,
@@ -105,12 +106,27 @@ pub extern "C" fn mmtk_set_heap_size(
 ) -> bool {
     use mmtk::util::options::GCTriggerSelector;
     let mut builder = BUILDER.lock().unwrap();
+    #[cfg(not(feature = "ss_no_gc_in_harness"))]
     {
         let mut trigger = TRIGGER_INIT.lock().unwrap();
         trigger.min_free = min_free;
         trigger.max_free = max_free;
         trigger.initial_size = min;
         trigger.capacity = max;
+        trigger.growth_limit = growth_limit;
+        trigger.target_utilization = target_utilization;
+        trigger.foreground_heap_growth_multiplier = foreground_heap_growth_multiplier;
+    }
+    #[cfg(feature = "ss_no_gc_in_harness")]
+    {
+        let size = 536_870_912; // 512 MB
+        let size = 805_306_368; // 768 MB
+        let size = 1_073_741_824; // 1 GB
+        let mut trigger = TRIGGER_INIT.lock().unwrap();
+        trigger.min_free = min_free;
+        trigger.max_free = max_free;
+        trigger.initial_size = min;
+        trigger.capacity = size;
         trigger.growth_limit = growth_limit;
         trigger.target_utilization = target_utilization;
         trigger.foreground_heap_growth_multiplier = foreground_heap_growth_multiplier;

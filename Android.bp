@@ -54,6 +54,7 @@ rust_ffi_shared {
         "single_worker",
         // "llvm_pgo_build",
         // "simple_scan_object",
+        // "ss_no_gc_in_harness",
     ],
     // If we want to use MMTk's USDT tracing facilities, then we need
     // to avoid stripping the section
