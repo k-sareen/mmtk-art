@@ -62,22 +62,28 @@ rust_ffi_shared {
     //     none: true,
     // },
     // "debug" build
-    flags: [
-        "-C opt-level=0",
-        "-C debuginfo=2",
-        "-C strip=none",
-        "-C debug-assertions=true",
-        "-C overflow-checks=true",
-        "-C codegen-units=256",
-    ],
+    // flags: [
+    //     "-C opt-level=0",
+    //     "-C debuginfo=2",
+    //     "-C strip=none",
+    //     "-C debug-assertions=true",
+    //     "-C overflow-checks=true",
+    //     // "-C codegen-units=256",
+    // ],
     // "release" build
     // XXX(kunals): Disable linker fatal warnings due to incompatible
     // DWARF versions between Rust and C++ when using LTO
-    // flags: [
-    //     "-C lto=true",
-    //     "-C linker-plugin-lto=true",
-    //     "-C link-arg=-Wl,--no-fatal-warnings",
-    // ],
+    flags: [
+        "-C lto=true",
+        // "-C linker-plugin-lto=true",
+        "-C link-arg=-Wl,--no-fatal-warnings",
+        // "-C debug-assertions=true",
+        // "-C overflow-checks=true",
+        // "-C profile-generate=/sdcard/misc/trace", // The profile files are saved at /sdcard/misc/trace/default_%m.profraw
+        "-C llvm-args=-pgo-warn-missing-function",
+        "-C profile-use=/home/kunals/git/android-lbo/mmtk-art/profiles/apex/ss_ix_merged.profdata",
+        // "-C profile-use=/home/kunals/git/android-lbo/mmtk-art/profiles/headless/ss_nogc_ix_merged.profdata",
+    ],
     whole_static_libs: [
         // "libclang_rt.profile",   // Only when llvm_pgo_build is enabled
     ],
