@@ -164,7 +164,12 @@ fn set_vm_layout(builder: &mut MMTKBuilder) {
     // Start the heap from the first chunk. With this base address, the maximum
     // heap size is ~1788 MB since the ART boot image really wants to be mapped
     // at 0x7000_0000.
-    let start = 0x040_0000;
+    #[cfg(target_pointer_width = "64")]
+    let start = 0x0040_0000;
+    // For 32-bit Android, use 0x20000000 because asan reserves 0x04000000 - 0x20000000.
+    #[cfg(target_pointer_width = "32")]
+    let start = 0x2000_0000;
+
     let end = start + max_heap_size;
 
     // SAFETY: start is a valid address from above
