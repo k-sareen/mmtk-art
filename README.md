@@ -148,7 +148,7 @@ For example, currently the write barrier is a full call into MMTk even for the f
 
 If you use this work then please cite the following paper:
 
-Kunal Sareen, Stephen M. Blackburn: Reclaiming Energy: Quantifying the Energy Overheads of Garbage Collection on Mobile Devices. IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS) 2026. [10.1109/ispass69572.2026.00058](https://doi.org/10.1109/ispass69572.2026.00058)
+> Kunal Sareen, Stephen M. Blackburn: Reclaiming Energy: Quantifying the Energy Overheads of Garbage Collection on Mobile Devices. IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS) 2026. [10.1109/ispass69572.2026.00058](https://doi.org/10.1109/ispass69572.2026.00058)
 
 or as bibtex
 
