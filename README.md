@@ -143,3 +143,31 @@ Once we have this functionality, we will enable this feature and register app im
 
 The port has not been performance tuned at all.
 For example, currently the write barrier is a full call into MMTk even for the fast-path.
+
+## Attribution
+
+If you use this work then please cite the following paper:
+
+Kunal Sareen, Stephen M. Blackburn: Reclaiming Energy: Quantifying the Energy Overheads of Garbage Collection on Mobile Devices. IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS) 2026. [10.1109/ispass69572.2026.00058](https://doi.org/10.1109/ispass69572.2026.00058)
+
+or as bibtex
+
+```bibtex
+@inproceedings{SareenB26,
+  author       = {Kunal Sareen and
+                  Stephen M. Blackburn},
+  title        = {Reclaiming Energy: Quantifying the Energy Overheads of Garbage Collection
+                  on Mobile Devices},
+  booktitle    = {{IEEE} International Symposium on Performance Analysis of Systems
+                  and Software, {ISPASS} 2026, Seoul, Republic of Korea, April 26-28,
+                  2026},
+  pages        = {543--555},
+  publisher    = {{IEEE}},
+  year         = {2026},
+  url          = {https://doi.org/10.1109/ISPASS69572.2026.00058},
+  doi          = {10.1109/ISPASS69572.2026.00058},
+  timestamp    = {Sun, 21 Jun 2026 17:19:50 +0200},
+  biburl       = {https://dblp.org/rec/conf/ispass/SareenB26.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+```
